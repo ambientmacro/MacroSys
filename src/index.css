@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #F5F7FA;
+  color: #0F1411;
+}
+
+@layer base {
+  :root {
+    --background: 100 33% 97%;
+    --foreground: 130 14% 7%;
+    --card: 0 0% 100%;
+    --card-foreground: 130 14% 7%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 130 14% 7%;
+    --primary: 144 36% 17%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 100 19% 95%;
+    --secondary-foreground: 144 36% 17%;
+    --muted: 100 19% 95%;
+    --muted-foreground: 138 6% 45%;
+    --accent: 100 19% 95%;
+    --accent-foreground: 144 36% 17%;
+    --destructive: 14 56% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 130 11% 90%;
+    --input: 130 11% 90%;
+    --ring: 144 36% 17%;
+    --radius: 0.375rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+}
+
+@layer base {
+  [data-debug-wrapper="true"] { display: contents !important; }
+  [data-debug-wrapper="true"] > * {
+    margin-left: inherit; margin-right: inherit; margin-top: inherit; margin-bottom: inherit;
+    padding-left: inherit; padding-right: inherit; padding-top: inherit; padding-bottom: inherit;
+    column-gap: inherit; row-gap: inherit; gap: inherit;
+    border-left-width: inherit; border-right-width: inherit; border-top-width: inherit; border-bottom-width: inherit;
+    border-left-style: inherit; border-right-style: inherit; border-top-style: inherit; border-bottom-style: inherit;
+    border-left-color: inherit; border-right-color: inherit; border-top-color: inherit; border-bottom-color: inherit;
+  }
+}
+
+/* Selection styling */
+::selection { background: #1E3A5F; color: #fff; }
+
+/* Print rules — used by ChecklistDetail "Imprimir / Salvar PDF" */
+@media print {
+  @page { size: A4; margin: 14mm; }
+  body { background: white !important; }
+  aside, header, .no-print, [data-whatsapp-notifier], button { display: none !important; }
+  main { margin: 0 !important; padding: 0 !important; }
+  .print-area { padding: 0 !important; max-width: 100% !important; }
+  .print-area .shadow-md, .print-area .shadow-lg { box-shadow: none !important; }
+  .print-area * { color: #000 !important; }
+  .print-area .bg-white, .print-area .bg-\[\#EFF3F8\] { background: white !important; border-color: #999 !important; }
+}
