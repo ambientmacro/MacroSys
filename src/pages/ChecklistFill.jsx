@@ -201,6 +201,10 @@ export default function ChecklistFill({ mode = "digital" }) {
         filledByUserId: profile.id,
         filledByName: profile.name,
         filledByRole: profile.role,
+        // Campo `date` (YYYY-MM-DD) é o que o Painel de Checklists do Dia usa
+        // como índice de filtro. Sem ele os checklists ficam invisíveis no
+        // painel e o equipamento aparece como pendente mesmo após preenchido.
+        date: new Date().toISOString().slice(0, 10),
         createdAt: serverTimestamp(),
       });
       const message = `🔔 *MACRO AMBIENTAL — Checklist Registrado*

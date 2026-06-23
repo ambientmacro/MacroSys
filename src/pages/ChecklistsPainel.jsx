@@ -25,6 +25,8 @@ export default function ChecklistsPainel() {
   const [todayChecklists, setTodayChecklists] = useState([]);
   const [myTeams, setMyTeams] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Filtro ativo dos cards de métricas: "todos" | "ok" | "pendente" | "nao_conforme"
+  const [filter, setFilter] = useState("todos");
 
   const isEncarregado = profile.role === ROLES.ENCARREGADO;
 
@@ -42,10 +44,12 @@ export default function ChecklistsPainel() {
         setVehicles(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       });
 
-      // Checklists do dia.
+      // Checklists do dia. Usamos `createdAt >= início do dia` que é mais
+      // robusto que o campo string `date` (que nem sempre estava presente em
+      // versões antigas — bug que deixava equipamento pendente após preencher).
       const start = new Date(); start.setHours(0, 0, 0, 0);
       unsubC = onSnapshot(
-        query(collection(db, "checklists"), where("date", ">=", start.toISOString().slice(0, 10))),
+        query(collection(db, "checklists"), where("createdAt", ">=", start)),
         (snap) => {
           setTodayChecklists(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
           setLoading(false);
@@ -71,7 +75,13 @@ export default function ChecklistsPainel() {
     return visibleVehicles.map((v) => {
       const cs = todayChecklists.filter((c) => c.vehicleId === v.id);
       const lastChecklist = cs.length > 0 ? cs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0] : null;
-      const status = !lastChecklist ? "pendente" : (lastChecklist.hasNonConformity ? "nao_conforme" : "ok");
+      // Não-conformidade derivada das respostas (item com answer === false).
+      // Mantém compat com docs antigos que tinham `hasNonConformity` salvo.
+      const hasNok = lastChecklist && (
+        lastChecklist.hasNonConformity === true ||
+        Object.values(lastChecklist.answers || {}).some((a) => a === false)
+      );
+      const status = !lastChecklist ? "pendente" : (hasNok ? "nao_conforme" : "ok");
       return { vehicle: v, checklist: lastChecklist, status };
     });
   }, [visibleVehicles, todayChecklists]);
@@ -82,6 +92,12 @@ export default function ChecklistsPainel() {
     pendentes: rows.filter((r) => r.status === "pendente").length,
     naoConformes: rows.filter((r) => r.status === "nao_conforme").length,
   }), [rows]);
+
+  // Lista filtrada pelo card clicado.
+  const filteredRows = useMemo(() => {
+    if (filter === "todos") return rows;
+    return rows.filter((r) => r.status === filter);
+  }, [rows, filter]);
 
   return (
     <div className="px-4 sm:px-8 py-8 max-w-7xl mx-auto" data-testid="page-checklists-painel">
@@ -94,11 +110,27 @@ export default function ChecklistsPainel() {
       </div>
 
       <div className="grid sm:grid-cols-4 gap-3 mb-6">
-        <Card label="Veículos ativos" value={metrics.total} color="#1E3A5F" icon={Truck} testId="m-total" />
-        <Card label="Checklist OK" value={metrics.ok} color="#10B981" icon={CheckCircle} testId="m-ok" />
-        <Card label="Pendentes hoje" value={metrics.pendentes} color="#D9A05B" icon={Clock} testId="m-pendentes" />
-        <Card label="Não conformes" value={metrics.naoConformes} color="#DC2626" icon={Warning} testId="m-naoconformes" />
+        <Card label="Veículos ativos" value={metrics.total} color="#1E3A5F" icon={Truck} testId="m-total"
+          active={filter === "todos"} onClick={() => setFilter("todos")} />
+        <Card label="Checklist OK" value={metrics.ok} color="#10B981" icon={CheckCircle} testId="m-ok"
+          active={filter === "ok"} onClick={() => setFilter(filter === "ok" ? "todos" : "ok")} />
+        <Card label="Pendentes hoje" value={metrics.pendentes} color="#D9A05B" icon={Clock} testId="m-pendentes"
+          active={filter === "pendente"} onClick={() => setFilter(filter === "pendente" ? "todos" : "pendente")} />
+        <Card label="Não conformes" value={metrics.naoConformes} color="#DC2626" icon={Warning} testId="m-naoconformes"
+          active={filter === "nao_conforme"} onClick={() => setFilter(filter === "nao_conforme" ? "todos" : "nao_conforme")} />
       </div>
+
+      {filter !== "todos" && (
+        <div className="mb-3 flex items-center gap-2 text-[11px] text-[#4A564F]" data-testid="filter-info">
+          <span className="font-bold uppercase tracking-[0.15em] text-[#708278]">Filtro ativo:</span>
+          <span className="bg-[#0F2542] text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-[0.1em]">
+            {filter === "ok" ? "Checklist OK" : filter === "pendente" ? "Pendentes hoje" : "Não conformes"}
+          </span>
+          <button onClick={() => setFilter("todos")} data-testid="filter-clear" className="text-[#1E3A5F] font-bold uppercase tracking-[0.15em] hover:underline">
+            Limpar
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="bg-white border border-[#E2E8E4] rounded-md p-10 text-center text-sm text-[#708278]">Carregando…</div>
@@ -123,7 +155,7 @@ export default function ChecklistsPainel() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ vehicle: v, checklist: c, status }) => (
+                {filteredRows.map(({ vehicle: v, checklist: c, status }) => (
                   <tr key={v.id} className="border-b border-[#E2E8E4] last:border-0 hover:bg-[#F5F7FA]" data-testid={`row-${v.id}`}>
                     <td className="px-4 py-3">
                       {status === "ok" && <span className="inline-flex items-center gap-1 text-[#10B981] text-xs font-bold uppercase tracking-[0.15em]"><CheckCircle size={14} weight="fill" /> OK</span>}
@@ -157,6 +189,11 @@ export default function ChecklistsPainel() {
                 ))}
               </tbody>
             </table>
+            {filteredRows.length === 0 && (
+              <div className="p-10 text-center text-sm text-[#708278]" data-testid="filter-empty">
+                Nenhum veículo nessa categoria.
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -164,16 +201,27 @@ export default function ChecklistsPainel() {
   );
 }
 
-function Card({ label, value, color, icon: Icon, testId }) {
+function Card({ label, value, color, icon: Icon, testId, active, onClick }) {
+  const clickable = typeof onClick === "function";
   return (
-    <div className="bg-white border border-[#E2E8E4] rounded-md p-4 flex items-center gap-3" data-testid={testId}>
-      <div className="w-11 h-11 rounded-md flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!clickable}
+      data-testid={testId}
+      data-active={active ? "true" : "false"}
+      className={`bg-white border rounded-md p-4 flex items-center gap-3 text-left w-full transition-all ${
+        active ? "ring-2 ring-offset-1" : "border-[#E2E8E4] hover:border-[#1E3A5F]/30"
+      } ${clickable ? "cursor-pointer" : "cursor-default"}`}
+      style={active ? { borderColor: color, boxShadow: `0 0 0 1px ${color}` } : undefined}
+    >
+      <div className="w-11 h-11 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}15` }}>
         <Icon size={20} weight="duotone" style={{ color }} />
       </div>
       <div>
         <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278]">{label}</div>
         <div className="text-2xl font-black tracking-tight" style={{ color }}>{value}</div>
       </div>
-    </div>
+    </button>
   );
 }

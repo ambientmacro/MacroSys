@@ -8,7 +8,7 @@ import { canViewChecklistsPainel } from "../lib/roles";
 import { toast } from "sonner";
 import {
   FileXls, Upload, Warning, MapPin, Truck, User, Clock, Info, MagnifyingGlass,
-  CheckCircle, XCircle, Funnel,
+  CheckCircle, XCircle, Funnel, X,
 } from "@phosphor-icons/react";
 
 /**
@@ -39,10 +39,15 @@ const extractPlate = (apelidoPlaca) => {
   const candidate = parts[parts.length - 1] || "";
   const cleaned = norm(candidate);
   // Placa BR: 7 caracteres alfanuméricos (LLLNNNN ou Mercosul LLLNLNN).
-  if (cleaned.length >= 6 && cleaned.length <= 8) return cleaned;
+  const PLATE_RE = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/;
+  if (PLATE_RE.test(cleaned)) return cleaned;
   // Tenta achar substring com formato placa em qualquer parte do texto.
   const m = norm(txt).match(/[A-Z]{3}[0-9][A-Z0-9][0-9]{2}/);
-  return m ? m[0] : cleaned;
+  if (m) return m[0];
+  // Não bateu com formato BR — devolve "" para que cruzamento descarte.
+  // (Antes, devolvíamos `cleaned` mesmo inválido — isso fazia o lixo
+  // "APELIDOPLACA" do header repetido virar uma "placa" no painel.)
+  return "";
 };
 
 /**
@@ -100,12 +105,20 @@ const parseGetrakSheet = (workbook) => {
       header.forEach((h, i) => { obj[h] = row[i] ?? ""; });
       return obj;
     })
-    // Descarta linhas-resumo (totalização) e linhas em branco.
+    // Descarta linhas-resumo (totalização), linhas em branco E linhas que são
+    // cabeçalhos repetidos de sub-blocos (o relatório GETRAK repete o header
+    // para cada veículo). Detecta: célula "Apelido/Placa" igual literalmente
+    // ao texto do header, OU "Hora início" não parece data.
     .filter((r) => {
       const apl = String(r["Apelido/Placa"] || "").trim();
       const hora = String(r["Hora início"] || "").trim();
       if (!apl || !hora) return false;
       if (/tempo\s+total/i.test(apl)) return false;
+      // Linhas-cabeçalho repetidas: valor "Apelido/Placa" igual ao próprio header.
+      if (/^apelido\s*\/?\s*placa$/i.test(apl)) return false;
+      if (/^motorista$/i.test(String(r["Motorista"] || ""))) return false;
+      // Hora início precisa parecer uma data (contém / ou -).
+      if (!/[\/\-]/.test(hora)) return false;
       return true;
     });
 };
@@ -120,6 +133,7 @@ export default function GetrakImport() {
   const [loading, setLoading] = useState(false);
   const [filterTipo, setFilterTipo] = useState("todos"); // todos | identificados | nao_cadastrados | divergentes
   const [searchPlate, setSearchPlate] = useState("");
+  const [openVehicle, setOpenVehicle] = useState(null); // veículo selecionado para o modal de eventos
 
   if (!canViewChecklistsPainel(profile.role)) {
     return (
@@ -215,7 +229,26 @@ export default function GetrakImport() {
     if (filterTipo === "identificados") list = list.filter((c) => c.vehicle && !c.divergente);
     if (filterTipo === "nao_cadastrados") list = list.filter((c) => c.naoCadastrado);
     if (filterTipo === "divergentes") list = list.filter((c) => c.divergente);
-    if (searchPlate.trim()) list = list.filter((c) => c.plate.includes(norm(searchPlate)));
+    // Busca livre: procura em QUALQUER campo relevante (placa, tag,
+    // marca/modelo, motorista titular, motorista GETRAK, último/primeiro
+    // local — inclusive nome de rua) para facilitar a vida do usuário.
+    const q = searchPlate.trim().toLowerCase();
+    if (q) {
+      list = list.filter((c) => {
+        const haystack = [
+          c.plate,
+          c.vehicle?.tag,
+          c.vehicle?.placa,
+          c.vehicle?.marca,
+          c.vehicle?.modelo,
+          ...(c.titularesNomes || []),
+          ...(c.driversReported || []),
+          c.ultimoLocal,
+          c.primeiroLocal,
+        ].filter(Boolean).join(" ").toLowerCase();
+        return haystack.includes(q);
+      });
+    }
     return list;
   }, [cruzamento, filterTipo, searchPlate]);
 
@@ -271,24 +304,33 @@ export default function GetrakImport() {
       {cruzamento.length > 0 && (
         <>
           <div className="grid sm:grid-cols-4 gap-3 mb-4">
-            <StatCard label="Veículos no relatório" value={stats.total} color="#1E3A5F" icon={Truck} testId="m-getrak-total" />
-            <StatCard label="Identificados" value={stats.identificados} color="#10B981" icon={CheckCircle} testId="m-getrak-ok" />
-            <StatCard label="Não cadastrados" value={stats.naoCadastrados} color="#D9A05B" icon={Warning} testId="m-getrak-naocad" />
-            <StatCard label="Motorista divergente" value={stats.divergentes} color="#DC2626" icon={XCircle} testId="m-getrak-diverg" />
+            <StatCard label="Veículos no relatório" value={stats.total} color="#1E3A5F" icon={Truck} testId="m-getrak-total"
+              active={filterTipo === "todos"} onClick={() => setFilterTipo("todos")} />
+            <StatCard label="Identificados" value={stats.identificados} color="#10B981" icon={CheckCircle} testId="m-getrak-ok"
+              active={filterTipo === "identificados"} onClick={() => setFilterTipo(filterTipo === "identificados" ? "todos" : "identificados")} />
+            <StatCard label="Não cadastrados" value={stats.naoCadastrados} color="#D9A05B" icon={Warning} testId="m-getrak-naocad"
+              active={filterTipo === "nao_cadastrados"} onClick={() => setFilterTipo(filterTipo === "nao_cadastrados" ? "todos" : "nao_cadastrados")} />
+            <StatCard label="Motorista divergente" value={stats.divergentes} color="#DC2626" icon={XCircle} testId="m-getrak-diverg"
+              active={filterTipo === "divergentes"} onClick={() => setFilterTipo(filterTipo === "divergentes" ? "todos" : "divergentes")} />
           </div>
 
           <div className="flex flex-wrap gap-2 mb-3 items-center">
-            <Funnel size={14} className="text-[#708278]" />
-            {["todos", "identificados", "nao_cadastrados", "divergentes"].map((f) => (
-              <button key={f} onClick={() => setFilterTipo(f)} data-testid={`filter-${f}`}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[0.1em] ${filterTipo === f ? "bg-[#1E3A5F] text-white" : "bg-[#E2E8E4] text-[#4A564F]"}`}>
-                {f === "todos" ? "Todos" : f === "identificados" ? "Identificados" : f === "nao_cadastrados" ? "Não cadastrados" : "Divergentes"}
-              </button>
-            ))}
+            {filterTipo !== "todos" && (
+              <div className="flex items-center gap-2 text-[11px] text-[#4A564F]" data-testid="getrak-filter-info">
+                <Funnel size={14} className="text-[#708278]" />
+                <span className="font-bold uppercase tracking-[0.15em] text-[#708278]">Filtro ativo:</span>
+                <span className="bg-[#0F2542] text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-[0.1em]">
+                  {filterTipo === "identificados" ? "Identificados" : filterTipo === "nao_cadastrados" ? "Não cadastrados" : "Divergentes"}
+                </span>
+                <button onClick={() => setFilterTipo("todos")} data-testid="getrak-filter-clear" className="text-[#1E3A5F] font-bold uppercase tracking-[0.15em] hover:underline">
+                  Limpar
+                </button>
+              </div>
+            )}
             <div className="ml-auto flex items-center gap-2 bg-white border border-[#E2E8E4] rounded-md px-3 py-1.5">
               <MagnifyingGlass size={14} className="text-[#708278]" />
               <input value={searchPlate} onChange={(e) => setSearchPlate(e.target.value)} data-testid="getrak-search"
-                placeholder="Buscar placa…" className="text-sm outline-none w-40" />
+                placeholder="Buscar (placa, tag, motorista, rua…)" className="text-sm outline-none w-56" />
             </div>
           </div>
 
@@ -311,7 +353,9 @@ export default function GetrakImport() {
                   {filtered.map((c) => {
                     const bg = c.naoCadastrado ? "bg-[#FFFBEB]" : c.divergente ? "bg-[#FEF2F2]" : "";
                     return (
-                      <tr key={c.plate} className={`border-b border-[#E2E8E4] last:border-0 ${bg} hover:bg-[#F5F7FA]`} data-testid={`row-${c.plate}`}>
+                      <tr key={c.plate} onClick={() => setOpenVehicle(c)}
+                        className={`border-b border-[#E2E8E4] last:border-0 ${bg} hover:bg-[#F5F7FA] cursor-pointer`}
+                        data-testid={`row-${c.plate}`}>
                         <td className="px-4 py-3 font-bold text-[#0F2542]">
                           {c.plate}
                           {c.naoCadastrado && <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#92400E] mt-0.5">Não cadastrado</div>}
@@ -319,7 +363,7 @@ export default function GetrakImport() {
                         </td>
                         <td className="px-4 py-3">
                           {c.vehicle ? (
-                            <button onClick={() => navigate(`/veiculos/${c.vehicle.id}`)} className="text-left hover:underline">
+                            <button onClick={(e) => { e.stopPropagation(); navigate(`/veiculos/${c.vehicle.id}`); }} className="text-left hover:underline">
                               <div className="font-bold text-[#0F2542]">{c.vehicle.tag || "—"}</div>
                               <div className="text-[11px] text-[#708278]">{c.vehicle.marca} {c.vehicle.modelo}</div>
                             </button>
@@ -337,6 +381,7 @@ export default function GetrakImport() {
                           {c.latLngFinal && (
                             <a href={`https://www.google.com/maps?q=${c.latLngFinal.lat},${c.latLngFinal.lng}`}
                               target="_blank" rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               data-testid={`maps-${c.plate}`}
                               className="inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] font-bold text-[#2563EB] hover:underline mt-0.5">
                               <MapPin size={10} weight="bold" /> {c.latLngFinal.lat.toFixed(5)}, {c.latLngFinal.lng.toFixed(5)}
@@ -372,19 +417,134 @@ export default function GetrakImport() {
           </div>
         </div>
       )}
+
+      {/* Modal: tabela de eventos do veículo selecionado */}
+      {openVehicle && (
+        <EventsModal item={openVehicle} onClose={() => setOpenVehicle(null)} />
+      )}
     </div>
   );
 }
 
-function StatCard({ label, value, color, icon: Icon, testId }) {
+function StatCard({ label, value, color, icon: Icon, testId, active, onClick }) {
+  const clickable = typeof onClick === "function";
   return (
-    <div className="bg-white border border-[#E2E8E4] rounded-md p-4 flex items-center gap-3" data-testid={testId}>
-      <div className="w-11 h-11 rounded-md flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!clickable}
+      data-testid={testId}
+      data-active={active ? "true" : "false"}
+      className={`bg-white border rounded-md p-4 flex items-center gap-3 text-left w-full transition-all ${
+        active ? "" : "border-[#E2E8E4] hover:border-[#1E3A5F]/30"
+      } ${clickable ? "cursor-pointer" : "cursor-default"}`}
+      style={active ? { borderColor: color, boxShadow: `0 0 0 1px ${color}` } : undefined}
+    >
+      <div className="w-11 h-11 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}15` }}>
         <Icon size={20} weight="duotone" style={{ color }} />
       </div>
       <div>
         <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278]">{label}</div>
         <div className="text-2xl font-black tracking-tight" style={{ color }}>{value}</div>
+      </div>
+    </button>
+  );
+}
+
+/**
+ * Modal de detalhamento — exibe a tabela completa de eventos/paradas do
+ * veículo clicado, com link para Google Maps em cada linha (lat/lng final).
+ *
+ * Reaproveita `rawLines` (linhas cruas da planilha agrupadas por placa).
+ */
+function EventsModal({ item, onClose }) {
+  const lines = item.rawLines || [];
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose} data-testid="getrak-modal">
+      <div className="bg-white rounded-md w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="border-b border-[#E2E8E4] px-6 py-4 flex items-center justify-between gap-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.25em] text-[#708278] font-bold">Eventos GETRAK</div>
+            <h2 className="font-[Outfit,sans-serif] text-xl font-black tracking-tight text-[#0F1411] mt-0.5 flex items-center gap-2">
+              <MapPin size={20} className="text-[#10B981]" weight="duotone" />
+              {item.plate}
+              {item.vehicle && <span className="text-sm font-bold text-[#4A564F]">· {item.vehicle.tag}</span>}
+            </h2>
+            <div className="text-[11px] text-[#708278] mt-0.5">
+              {lines.length} eventos · {item.totalKm.toFixed(1)} km · Motorista GETRAK: {item.driversReported.join(", ") || "—"}
+            </div>
+          </div>
+          <button onClick={onClose} className="text-[#708278] hover:text-[#0F1411] p-2 rounded-md hover:bg-[#F5F7FA]" data-testid="getrak-modal-close">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Tabela de eventos */}
+        <div className="overflow-auto flex-1">
+          <table className="w-full text-xs">
+            <thead className="bg-[#F5F7FA] border-b border-[#E2E8E4] sticky top-0">
+              <tr>
+                <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">#</th>
+                <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Início</th>
+                <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Fim</th>
+                <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Motorista</th>
+                <th className="text-right text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Distância</th>
+                <th className="text-right text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Em movim.</th>
+                <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Local inicial</th>
+                <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Local final</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((r, idx) => {
+                const llIni = parseLatLng(r["Latitude e longitude inicial"]);
+                const llFim = parseLatLng(r["Latitude e longitude final"]);
+                return (
+                  <tr key={idx} className="border-b border-[#E2E8E4] last:border-0 hover:bg-[#F5F7FA] align-top">
+                    <td className="px-4 py-3 text-[#708278]">{idx + 1}</td>
+                    <td className="px-4 py-3 text-[#0F2542] whitespace-nowrap">{r["Hora início"] || "—"}</td>
+                    <td className="px-4 py-3 text-[#0F2542] whitespace-nowrap">{r["Hora final"] || "—"}</td>
+                    <td className="px-4 py-3 text-[#4A564F]">{r["Motorista"] || "—"}</td>
+                    <td className="px-4 py-3 text-right font-bold text-[#0F2542] whitespace-nowrap">
+                      {(Number(String(r["Distância (km)"] || "0").replace(",", ".")) || 0).toFixed(1)} km
+                    </td>
+                    <td className="px-4 py-3 text-right text-[#4A564F] whitespace-nowrap">{r["Tempo em movimento"] || "—"}</td>
+                    <td className="px-4 py-3 text-[#4A564F] max-w-xs">
+                      <div className="text-[11px]">{r["Local inicial"] || "—"}</div>
+                      {llIni && (
+                        <a href={`https://www.google.com/maps?q=${llIni.lat},${llIni.lng}`}
+                          target="_blank" rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] font-bold text-[#2563EB] hover:underline mt-1">
+                          <MapPin size={10} weight="bold" /> Maps
+                        </a>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-[#4A564F] max-w-xs">
+                      <div className="text-[11px]">{r["Local final"] || "—"}</div>
+                      {llFim && (
+                        <a href={`https://www.google.com/maps?q=${llFim.lat},${llFim.lng}`}
+                          target="_blank" rel="noreferrer"
+                          data-testid={`modal-maps-${idx}`}
+                          className="inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] font-bold text-[#2563EB] hover:underline mt-1">
+                          <MapPin size={10} weight="bold" /> Maps
+                        </a>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {lines.length === 0 && (
+            <div className="p-10 text-center text-sm text-[#708278]">Sem eventos para este veículo.</div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-[#E2E8E4] px-6 py-3 bg-[#F5F7FA] text-[11px] text-[#708278] flex items-center justify-between">
+          <span>Clique em "Maps" em qualquer linha para abrir no Google Maps.</span>
+          <button onClick={onClose} className="text-[#1E3A5F] font-bold uppercase tracking-[0.15em] text-[10px] hover:underline">Fechar</button>
+        </div>
       </div>
     </div>
   );
