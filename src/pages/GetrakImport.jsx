@@ -39,15 +39,10 @@ const extractPlate = (apelidoPlaca) => {
   const candidate = parts[parts.length - 1] || "";
   const cleaned = norm(candidate);
   // Placa BR: 7 caracteres alfanuméricos (LLLNNNN ou Mercosul LLLNLNN).
-  const PLATE_RE = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/;
-  if (PLATE_RE.test(cleaned)) return cleaned;
+  if (cleaned.length >= 6 && cleaned.length <= 8) return cleaned;
   // Tenta achar substring com formato placa em qualquer parte do texto.
   const m = norm(txt).match(/[A-Z]{3}[0-9][A-Z0-9][0-9]{2}/);
-  if (m) return m[0];
-  // Não bateu com formato BR — devolve "" para que cruzamento descarte.
-  // (Antes, devolvíamos `cleaned` mesmo inválido — isso fazia o lixo
-  // "APELIDOPLACA" do header repetido virar uma "placa" no painel.)
-  return "";
+  return m ? m[0] : cleaned;
 };
 
 /**
@@ -105,20 +100,12 @@ const parseGetrakSheet = (workbook) => {
       header.forEach((h, i) => { obj[h] = row[i] ?? ""; });
       return obj;
     })
-    // Descarta linhas-resumo (totalização), linhas em branco E linhas que são
-    // cabeçalhos repetidos de sub-blocos (o relatório GETRAK repete o header
-    // para cada veículo). Detecta: célula "Apelido/Placa" igual literalmente
-    // ao texto do header, OU "Hora início" não parece data.
+    // Descarta linhas-resumo (totalização) e linhas em branco.
     .filter((r) => {
       const apl = String(r["Apelido/Placa"] || "").trim();
       const hora = String(r["Hora início"] || "").trim();
       if (!apl || !hora) return false;
       if (/tempo\s+total/i.test(apl)) return false;
-      // Linhas-cabeçalho repetidas: valor "Apelido/Placa" igual ao próprio header.
-      if (/^apelido\s*\/?\s*placa$/i.test(apl)) return false;
-      if (/^motorista$/i.test(String(r["Motorista"] || ""))) return false;
-      // Hora início precisa parecer uma data (contém / ou -).
-      if (!/[\/\-]/.test(hora)) return false;
       return true;
     });
 };
@@ -178,6 +165,10 @@ export default function GetrakImport() {
     rows.forEach((r) => {
       const plate = extractPlate(r["Apelido/Placa"]);
       if (!plate) return;
+      // Descarta o "lixo" típico do header repetido do GETRAK ("Apelido/Placa"
+      // → vira "APELIDOPLACA" após normalização). Não bloqueia placas reais.
+      if (plate === "APELIDOPLACA" || plate.startsWith("APELIDO")) return;
+      if (plate === "MOTORISTA") return;
       if (!byPlate.has(plate)) byPlate.set(plate, { plate, lines: [], driverNames: new Set() });
       const g = byPlate.get(plate);
       g.lines.push(r);
