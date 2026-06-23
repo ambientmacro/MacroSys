@@ -202,13 +202,26 @@ export default function RequerimentoWizard() {
       if (hasVeiculo && isAlugado) {
         if (!data.vehicleTypeId) return "Selecione o Tipo de Veículo (definido pelo Medição) para puxar os valores.";
       }
-      if (hasVeiculo && hasMotorista && data.motorista_eh_responsavel_legal === false) {
-        if (!data.responsavel_legal_nome) return "Informe o nome do responsável legal pelo equipamento.";
-        if (!data.responsavel_legal_telefone) return "Informe o telefone do responsável legal.";
-        // PIX OU (Agência + Conta) obrigatório.
+      if (hasVeiculo && hasMotorista) {
+        // Quando o motorista NÃO é o responsável legal, exigimos os dados
+        // identificadores do terceiro (nome + telefone).
+        if (data.motorista_eh_responsavel_legal === false) {
+          if (!data.responsavel_legal_nome) return "Informe o nome do responsável legal pelo equipamento.";
+          if (!data.responsavel_legal_telefone) return "Informe o telefone do responsável legal.";
+        }
+        // Dados bancários do responsável legal — regra de pagamento:
+        //  OPÇÃO A: Banco + Agência + Conta (os 3 obrigatórios juntos), PIX opcional;
+        //  OPÇÃO B: Só PIX (banco/ag/conta vazios).
+        // Pelo menos UMA das opções precisa estar completa. NÃO pode haver
+        // preenchimento parcial da conta (ex.: agência sem banco) — isso é erro.
+        const banco = String(data.responsavel_legal_banco || "").trim();
+        const ag = String(data.responsavel_legal_agencia || "").trim();
+        const ct = String(data.responsavel_legal_conta || "").trim();
         const temPix = !!String(data.responsavel_legal_pix || "").trim();
-        const temAgCt = !!(String(data.responsavel_legal_agencia || "").trim() && String(data.responsavel_legal_conta || "").trim());
-        if (!temPix && !temAgCt) return "Informe os dados bancários: PIX OU Agência + Conta.";
+        const contaCompleta = !!(banco && ag && ct);
+        const contaParcial = !contaCompleta && (banco || ag || ct);
+        if (contaParcial) return "Preencha Banco + Agência + Conta (os três juntos) — ou deixe todos em branco e use apenas o PIX.";
+        if (!temPix && !contaCompleta) return "Informe os dados bancários do responsável legal: Banco+Agência+Conta OU PIX.";
       }
     }
     return null;
@@ -250,8 +263,8 @@ export default function RequerimentoWizard() {
       const acaoCriacao = asDraft
         ? "Rascunho enviado como requerimento"
         : (hasVeiculo
-            ? "Requerimento criado — encaminhado direto para Segurança do Trabalho"
-            : "Requerimento criado — encaminhado para o DP");
+          ? "Requerimento criado — encaminhado direto para Segurança do Trabalho"
+          : "Requerimento criado — encaminhado para o DP");
       const historyEntry = {
         at: new Date().toISOString(),
         action: asDraft ? "Rascunho atualizado" : (draftId ? acaoCriacao : "Requerimento criado"),
@@ -324,14 +337,17 @@ export default function RequerimentoWizard() {
           crlvAnexo: data.crlv_anexo || null,
           observacoes: data.observacoes_veiculo || "",
           // Responsável legal pelo equipamento. Quando hasMotorista + flag marcada,
-          // o motorista vinculado é o próprio responsável (campos a seguir ficam null).
+          // o motorista vinculado é o próprio responsável (nome/cpf/telefone
+          // herdados do motorista). Os DADOS BANCÁRIOS são SEMPRE gravados
+          // (independente da flag) — exigência da Frota.
           motoristaEhResponsavelLegal: hasMotorista ? motoristaEhRespLegal : null,
-          responsavelLegal: hasMotorista && !motoristaEhRespLegal ? {
-            nome: data.responsavel_legal_nome,
-            cpfCnpj: data.responsavel_legal_cpf_cnpj || null,
-            telefone: data.responsavel_legal_telefone,
-            email: data.responsavel_legal_email || null,
-            // Dados bancários — para pagamento de aluguel/contrato.
+          responsavelLegal: hasMotorista ? {
+            // Identificação só preenchida quando NÃO é o motorista vinculado.
+            nome: !motoristaEhRespLegal ? data.responsavel_legal_nome : null,
+            cpfCnpj: !motoristaEhRespLegal ? (data.responsavel_legal_cpf_cnpj || null) : null,
+            telefone: !motoristaEhRespLegal ? data.responsavel_legal_telefone : null,
+            email: !motoristaEhRespLegal ? (data.responsavel_legal_email || null) : null,
+            // Dados bancários — sempre gravados para pagamento de aluguel/contrato.
             banco: data.responsavel_legal_banco || null,
             agencia: data.responsavel_legal_agencia || null,
             conta: data.responsavel_legal_conta || null,
@@ -510,16 +526,14 @@ function Stepper({ step, totalSteps }) {
         return (
           <div key={s.id} className="flex items-center flex-1 min-w-0">
             <div className="flex flex-col items-center min-w-[80px] sm:min-w-[100px]">
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                isActive ? "bg-[#2563EB] text-white ring-4 ring-[#2563EB]/20" :
-                isDone ? "bg-[#10B981] text-white" :
-                "bg-[#E2E8E4] text-[#708278]"
-              }`}>
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isActive ? "bg-[#2563EB] text-white ring-4 ring-[#2563EB]/20" :
+                  isDone ? "bg-[#10B981] text-white" :
+                    "bg-[#E2E8E4] text-[#708278]"
+                }`}>
                 {isDone ? <CheckCircle size={18} weight="fill" /> : s.id}
               </div>
-              <div className={`mt-2 text-[10px] sm:text-xs font-bold text-center uppercase tracking-[0.1em] ${
-                isActive ? "text-[#2563EB]" : isDone ? "text-[#0F2542]" : "text-[#708278]"
-              }`}>{s.short}</div>
+              <div className={`mt-2 text-[10px] sm:text-xs font-bold text-center uppercase tracking-[0.1em] ${isActive ? "text-[#2563EB]" : isDone ? "text-[#0F2542]" : "text-[#708278]"
+                }`}>{s.short}</div>
             </div>
             {idx < WIZARD_STEPS.length - 1 && (
               <div className={`flex-1 h-0.5 mx-1 mt-[-20px] ${isDone ? "bg-[#10B981]" : "bg-[#E2E8E4]"}`} />
@@ -1118,43 +1132,62 @@ function Step5Detalhes({ data, set, hasVeiculo, hasMotorista, isAlugado, isPropr
                 <span>O <strong>motorista vinculado</strong> é o responsável legal por este equipamento.</span>
               </label>
               {data.motorista_eh_responsavel_legal === false && (
-                <>
-                  <div className="grid sm:grid-cols-2 gap-4 mt-4">
-                    <Field label="Nome do responsável legal" required full>
-                      <input data-testid="resp-nome" value={data.responsavel_legal_nome} onChange={(e) => set("responsavel_legal_nome", e.target.value)} className={inp} placeholder="Razão social ou nome completo" />
-                    </Field>
-                    <Field label="CPF / CNPJ">
-                      <input data-testid="resp-doc" value={data.responsavel_legal_cpf_cnpj} onChange={(e) => set("responsavel_legal_cpf_cnpj", e.target.value)} className={inp} />
-                    </Field>
-                    <Field label="Telefone" required>
-                      <input data-testid="resp-tel" value={data.responsavel_legal_telefone} onChange={(e) => set("responsavel_legal_telefone", e.target.value)} className={inp} placeholder="(11) 99999-9999" />
-                    </Field>
-                    <Field label="E-mail (opcional)">
-                      <input data-testid="resp-email" type="email" value={data.responsavel_legal_email} onChange={(e) => set("responsavel_legal_email", e.target.value)} className={inp} />
-                    </Field>
-                  </div>
-
-                  {/* Dados bancários (PIX OU Agência + Conta) */}
-                  <div className="mt-5 bg-[#F5F7FA] border border-[#E2E8E4] rounded-md p-4">
-                    <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#0F2542] mb-3">Dados bancários · pagamento</div>
-                    <p className="text-[11px] text-[#708278] mb-3">Informe <strong>PIX</strong> OU <strong>Agência + Conta</strong>. PIX é opcional se Agência+Conta estiverem preenchidos.</p>
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      <Field label="Banco">
-                        <input data-testid="resp-banco" value={data.responsavel_legal_banco} onChange={(e) => set("responsavel_legal_banco", e.target.value)} className={inp} placeholder="Ex: Itaú" />
-                      </Field>
-                      <Field label="PIX (opcional)">
-                        <input data-testid="resp-pix" value={data.responsavel_legal_pix} onChange={(e) => set("responsavel_legal_pix", e.target.value)} className={inp} placeholder="CPF/CNPJ/E-mail/Telefone/Chave" />
-                      </Field>
-                      <Field label="Agência">
-                        <input data-testid="resp-agencia" value={data.responsavel_legal_agencia} onChange={(e) => set("responsavel_legal_agencia", e.target.value)} className={inp} placeholder="0001" />
-                      </Field>
-                      <Field label="Conta">
-                        <input data-testid="resp-conta" value={data.responsavel_legal_conta} onChange={(e) => set("responsavel_legal_conta", e.target.value)} className={inp} placeholder="12345-6" />
-                      </Field>
-                    </div>
-                  </div>
-                </>
+                <div className="grid sm:grid-cols-2 gap-4 mt-4">
+                  <Field label="Nome do responsável legal" required full>
+                    <input data-testid="resp-nome" value={data.responsavel_legal_nome} onChange={(e) => set("responsavel_legal_nome", e.target.value)} className={inp} placeholder="Razão social ou nome completo" />
+                  </Field>
+                  <Field label="CPF / CNPJ">
+                    <input data-testid="resp-doc" value={data.responsavel_legal_cpf_cnpj} onChange={(e) => set("responsavel_legal_cpf_cnpj", e.target.value)} className={inp} />
+                  </Field>
+                  <Field label="Telefone" required>
+                    <input data-testid="resp-tel" value={data.responsavel_legal_telefone} onChange={(e) => set("responsavel_legal_telefone", e.target.value)} className={inp} placeholder="(11) 99999-9999" />
+                  </Field>
+                  <Field label="E-mail (opcional)">
+                    <input data-testid="resp-email" type="email" value={data.responsavel_legal_email} onChange={(e) => set("responsavel_legal_email", e.target.value)} className={inp} />
+                  </Field>
+                </div>
               )}
+
+              {/* Dados bancários — regra de pagamento:
+                  OPÇÃO A: Banco + Agência + Conta (3 obrigatórios juntos);
+                  OPÇÃO B: Só PIX. Pelo menos uma das duas opções completa. */}
+              <div className="mt-5 bg-[#F5F7FA] border border-[#E2E8E4] rounded-md p-4">
+                <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#0F2542] mb-1">Dados bancários · pagamento <span className="text-[#DC2626]">*</span></div>
+                <p className="text-[11px] text-[#708278] mb-4">Preencha <strong>Opção A</strong> (Banco + Agência + Conta — os três juntos) <strong>OU</strong> <strong>Opção B</strong> (PIX). Você pode informar as duas, mas pelo menos uma precisa estar completa.</p>
+
+                {/* Opção A — Conta bancária */}
+                <div className="bg-white border border-[#E2E8E4] rounded-md p-3 mb-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-6 h-6 rounded-full bg-[#1E3A5F] text-white text-[11px] font-bold flex items-center justify-center">A</div>
+                    <div className="text-[11px] uppercase tracking-[0.15em] font-bold text-[#0F2542]">Conta bancária</div>
+                    <div className="text-[10px] text-[#708278]">(Banco + Agência + Conta — os 3 obrigatórios juntos)</div>
+                  </div>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    <Field label="Banco">
+                      <input data-testid="resp-banco" value={data.responsavel_legal_banco} onChange={(e) => set("responsavel_legal_banco", e.target.value)} className={inp} placeholder="Ex: Itaú" />
+                    </Field>
+                    <Field label="Agência">
+                      <input data-testid="resp-agencia" value={data.responsavel_legal_agencia} onChange={(e) => set("responsavel_legal_agencia", e.target.value)} className={inp} placeholder="0001" />
+                    </Field>
+                    <Field label="Conta">
+                      <input data-testid="resp-conta" value={data.responsavel_legal_conta} onChange={(e) => set("responsavel_legal_conta", e.target.value)} className={inp} placeholder="12345-6" />
+                    </Field>
+                  </div>
+                </div>
+
+                <div className="text-center text-[10px] uppercase tracking-[0.25em] font-bold text-[#708278] my-2">— OU —</div>
+
+                {/* Opção B — PIX */}
+                <div className="bg-white border border-[#E2E8E4] rounded-md p-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-6 h-6 rounded-full bg-[#10B981] text-white text-[11px] font-bold flex items-center justify-center">B</div>
+                    <div className="text-[11px] uppercase tracking-[0.15em] font-bold text-[#0F2542]">PIX</div>
+                  </div>
+                  <Field label="Chave PIX" full>
+                    <input data-testid="resp-pix" value={data.responsavel_legal_pix} onChange={(e) => set("responsavel_legal_pix", e.target.value)} className={inp} placeholder="CPF/CNPJ/E-mail/Telefone/Chave aleatória" />
+                  </Field>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1235,6 +1268,13 @@ function Step6Revisao({ data, hasVeiculo, hasMotorista, isAlugado, isProprio }) 
                     <Row k="E-mail" v={data.responsavel_legal_email} />
                   </>
                 )}
+                {/* Dados bancários — sempre mostrados na revisão. */}
+                <div className="mt-2 pt-2 border-t border-[#2563EB]/20">
+                  <Row k="Banco" v={data.responsavel_legal_banco} />
+                  <Row k="PIX" v={data.responsavel_legal_pix} />
+                  <Row k="Agência" v={data.responsavel_legal_agencia} />
+                  <Row k="Conta" v={data.responsavel_legal_conta} />
+                </div>
               </div>
             )}
           </div>
