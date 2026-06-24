@@ -85,7 +85,7 @@ export const getMenuByRole = (role) => {
       { path: "/motoristas", label: "Motoristas", icon: "Users" },
       { path: "/users", label: "Criar Login Motorista", icon: "UserGear" },
       { path: "/checklists", label: "Checklists", icon: "ListChecks" },
-      { path: "/tipos-veiculo", label: "Tipos de Veículo (ref.)", icon: "Stack" },
+      { path: "/tipos-veiculo", label: "Tipos de Veículo", icon: "Stack" },
     ],
     [ROLES.DP]: [
       ...common,
@@ -112,7 +112,7 @@ export const getMenuByRole = (role) => {
       ...common,
       { path: "/teams", label: "Equipes", icon: "Users" },
       { path: "/funcoes", label: "Funções / Cargos", icon: "UserGear" },
-      { path: "/tipos-veiculo", label: "Tipos de Veículo (ref.)", icon: "Stack" },
+      { path: "/tipos-veiculo", label: "Tipos de Veículo", icon: "Stack" },
       { path: "/frota/custos", label: "Custo Total da Frota", icon: "CurrencyCircleDollar" },
       { path: "/frota/relatorios", label: "Acompanhamento de Custo", icon: "ChartBar" },
     ],

@@ -527,8 +527,8 @@ function Stepper({ step, totalSteps }) {
           <div key={s.id} className="flex items-center flex-1 min-w-0">
             <div className="flex flex-col items-center min-w-[80px] sm:min-w-[100px]">
               <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isActive ? "bg-[#2563EB] text-white ring-4 ring-[#2563EB]/20" :
-                  isDone ? "bg-[#10B981] text-white" :
-                    "bg-[#E2E8E4] text-[#708278]"
+                isDone ? "bg-[#10B981] text-white" :
+                  "bg-[#E2E8E4] text-[#708278]"
                 }`}>
                 {isDone ? <CheckCircle size={18} weight="fill" /> : s.id}
               </div>

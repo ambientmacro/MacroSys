@@ -133,7 +133,7 @@ function App() {
             <Route path="/veiculos" element={<VeiculosList />} />
             <Route path="/veiculos/:id" element={<VehicleDetail />} />
             <Route path="/frota/relatorios" element={
-              <ProtectedRoute allow={[ROLES.FROTA, ROLES.ADMIN]}><FrotaRelatorios /></ProtectedRoute>
+              <ProtectedRoute allow={[ROLES.PERFORMANCE, ROLES.FROTA, ROLES.ADMIN]}><FrotaRelatorios /></ProtectedRoute>
             } />
             <Route path="/motoristas" element={
               <ProtectedRoute allow={[ROLES.ENCARREGADO, ROLES.FROTA, ROLES.SEGURANCA, ROLES.DP, ROLES.ADMIN]}>
