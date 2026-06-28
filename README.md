@@ -160,15 +160,30 @@ Use o usuário abaixo para entrar e criar os demais usuários em **Menu → Usu�
 | yuri DP | `yuridp@emg.br` | `123456` |
 | yuri Motorista / Motorista | `yurimotorista@eng.br` | `123456` |
 
-jair@email.com 123456
 
-Arthur
-arthur@eng.br
+
+
+# ========== ToDo: 20/06/2026 ========== 
+
+  no perfil de frota após o veículos estiver cadastrado, não poder alterar o valor em "Custos e Gestão (Frota)" os campos "Origem" e "Valor mensal de aluguel (R$)" pois esse campo quem vai ter permissão para alterar é o medição
+
+está precisando alterar as validação que zod mesmo, como
+o ano no veículo tem que ter 4 digito numérico somente, devendo ser maior que 1970
+
+e na verdade depois que o requerimento já está feito, o adm frota não pode editar os campos exeto "Template de checklist (override)" e "Motoristas titulares" assim como os anexo que ele pode adicionar a mais quando por exemplo a habilitação venceu e adiciona uma nova, mais não pode excluir a que já existe.
+
+
+
+
+# ========== ToDo: 20/06/2026 ========== 
+
+
+
 
 ## Falta corrigir (ToDo)
 
 # ========== 20/06/2026 ========== REUNIÃO COM ARTHUR
-Nos requerimentos quando selecionado Retroescavadeira, Escavadeira serão somente Horimetro sem quilometragem, já para os demais serão inverso. e todos serão obrigatório.
+OK Nos requerimentos quando selecionado Retroescavadeira, Escavadeira serão somente Horimetro sem quilometragem, já para os demais serão inverso. e todos serão obrigatório.
 
 Na opção do "Caminhao", vai virar "Caminhão Basculante" e na opção de trator vai virar "Caminhão Carroceria"
 para ambos poderá escolher entre toco ou truc porém apenas no caminhão Carroceria poderá ter:

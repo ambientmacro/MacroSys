@@ -290,7 +290,7 @@ export default function VehicleDetail() {
                     {form.origem === "prestacao" && <option value="prestacao">Prestação de serviço (legado)</option>}
                   </select>
                 </Field>
-                <Field l="Valor mensal de aluguel (R$)" hint="Inegociável. Mesmo veículos próprios têm auto-aluguel interno para relatórios.">
+                <Field l="Valor mensal de aluguel (R$)" hint="Campo alterado pelo perfomace">
                   <input type="number" value={form.valorAluguelMensal || ""} onChange={(e) => set("valorAluguelMensal", e.target.value)} className={inp} placeholder="15000" data-testid="ev-aluguel" />
                 </Field>
                 <Field l="Valor de patrimônio (R$)" hint="Para veículos próprios.">
