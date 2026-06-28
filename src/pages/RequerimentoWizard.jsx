@@ -5,7 +5,7 @@ import { addDoc, collection, serverTimestamp, getDocs, query, where, doc, update
 import { db } from "../lib/firebase";
 import {
   REQ_TYPE, REQ_TYPE_LABEL, REQ_STATUS, VEHICLE_STATUS, DRIVER_STATUS, WIZARD_STEPS,
-  EQUIPAMENTO_TIPOS, ORIGEM_TIPOS, ORIGENS_ALUGADAS, COMBUSTIVEIS, PORTE_VEICULO, CATEGORIAS_CNH,
+  EQUIPAMENTO_TIPOS, EQUIPAMENTO_GRUPOS, ORIGEM_TIPOS, ORIGENS_ALUGADAS, COMBUSTIVEIS, PORTE_VEICULO, CATEGORIAS_CNH,
   SUB_TIPOS_CAMINHAO, SUB_TIPOS_LABEL, getEquipamentoTipo,
 } from "../lib/constants";
 import { snapshotVehicleType, formatCurrency } from "../lib/vehicleTypes";
@@ -23,6 +23,10 @@ const empty = {
   regime: "",
   // veiculo
   porte: "",
+  // Categoria de equipamento (apenas porte=pesado): "caminhoes" | "carretas" |
+  // "maquinas". Define qual grupo de tipos específicos é exibido em seguida.
+  // Para porte=leve os tipos são mostrados direto, sem agrupar.
+  categoria_equipamento: "",
   equipamento_tipo: "",
   equipamento_tipo_outro: "",
   // Sub-tipo aplicável a caminhões (toco/truck/3_4). Vazio para outros.
@@ -307,7 +311,12 @@ export default function RequerimentoWizard() {
         const placaNorm = placaTrim.replace(/[^A-Z0-9]/g, "");
         const motoristaEhRespLegal = data.motorista_eh_responsavel_legal !== false;
         const vRef = await addDoc(collection(db, "vehicles"), {
-          tag: data.tag || `SEM-TAG-${reqId.slice(0, 6)}`,
+          // Tag de identificação do equipamento. Se o usuário não informou
+          // TAG (frota sem patrimônio interno) usamos a PLACA como ID —
+          // garante unicidade visual nas listagens e atende a regra do Frota.
+          // Último fallback: ID curto do requerimento (raríssimo — veículo
+          // sem TAG E sem placa, como equipamentos pesados não-registrados).
+          tag: (data.tag || "").trim() || placaTrim || `SEM-TAG-${reqId.slice(0, 6)}`,
           placa: placaTrim || null,
           placaNormalizada: placaNorm || null,
           porte: data.porte,
@@ -658,7 +667,7 @@ function Step2Dados({ data, set, hasVeiculo, hasMotorista, subTiposDisponiveis =
           <Field label="Qual o porte do veículo?" required>
             <div className="grid sm:grid-cols-3 gap-4 mt-2">
               {PORTE_VEICULO.map((p) => (
-                <button key={p.id} data-testid={`porte-${p.id}`} onClick={() => { set("porte", p.id); set("equipamento_tipo", ""); set("sub_tipo", ""); }}
+                <button key={p.id} data-testid={`porte-${p.id}`} onClick={() => { set("porte", p.id); set("categoria_equipamento", ""); set("equipamento_tipo", ""); set("sub_tipo", ""); }}
                   className={`text-left p-5 rounded-md border-2 transition-all ${data.porte === p.id ? "border-[#2563EB] bg-[#EFF3F8]" : "border-[#E2E8E4] bg-white hover:border-[#2563EB]/40"}`}>
                   <div className="flex items-start justify-between">
                     <Truck size={28} weight="duotone" className="text-[#2563EB]" />
@@ -676,19 +685,88 @@ function Step2Dados({ data, set, hasVeiculo, hasMotorista, subTiposDisponiveis =
           {data.porte && (
             <div className="mt-6">
               <Field label="Tipo de equipamento" required>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-2">
-                  {EQUIPAMENTO_TIPOS.filter((t) => !t.porte || t.porte === data.porte || t.id === "outro").map((t) => (
-                    <button key={t.id} data-testid={`equip-${t.id}`} onClick={() => { set("equipamento_tipo", t.id); set("sub_tipo", ""); }}
+                {(() => {
+                  const equipFiltrados = EQUIPAMENTO_TIPOS.filter((t) => !t.porte || t.porte === data.porte || t.id === "outro");
+                  const renderBtn = (t) => (
+                    <button key={t.id} data-testid={`equip-${t.id}`} type="button"
+                      onClick={() => { set("equipamento_tipo", t.id); set("sub_tipo", ""); }}
                       className={`p-3 rounded-md border-2 text-sm font-bold transition-all ${data.equipamento_tipo === t.id ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-[#E2E8E4] bg-white hover:border-[#2563EB]/40"}`}>
                       {t.label}
                     </button>
-                  ))}
-                </div>
+                  );
+
+                  // ──────────── Porte LEVE: tipos direto ────────────
+                  if (data.porte === "leve") {
+                    return (
+                      <div className="space-y-3 mt-2">
+                        <div className="text-[10px] text-[#708278] italic">Equipamentos Leves — Carros, caminhonetes, motos e utilitários.</div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                          {equipFiltrados.map(renderBtn)}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // ──────────── Porte PESADO: cascata Categoria → Tipo ────────────
+                  const gruposOrdem = ["caminhoes", "carretas", "maquinas"];
+                  const cat = data.categoria_equipamento;
+                  // 1º clique — escolher a categoria
+                  if (!cat) {
+                    return (
+                      <div className="space-y-3 mt-2">
+                        <div className="text-[10px] text-[#708278] italic">Selecione a categoria do equipamento.</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {gruposOrdem.map((g) => {
+                            const meta = EQUIPAMENTO_GRUPOS[g];
+                            const total = equipFiltrados.filter((t) => t.grupo === g).length;
+                            return (
+                              <button key={g} type="button" data-testid={`cat-${g}`}
+                                onClick={() => set("categoria_equipamento", g)}
+                                className="text-left p-4 rounded-md border-2 border-[#E2E8E4] bg-white hover:border-[#2563EB]/40 transition-all">
+                                <div className="font-[Outfit,sans-serif] text-lg font-black text-[#0F2542]">{meta.label}</div>
+                                <div className="text-[11px] text-[#708278] italic mt-1">{meta.hint}</div>
+                                <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#2563EB] mt-2">{total} opções</div>
+                              </button>
+                            );
+                          })}
+                          <button type="button" data-testid="cat-outro"
+                            onClick={() => { set("categoria_equipamento", "outro"); set("equipamento_tipo", "outro"); }}
+                            className="text-left p-4 rounded-md border-2 border-[#E2E8E4] bg-white hover:border-[#2563EB]/40 transition-all">
+                            <div className="font-[Outfit,sans-serif] text-lg font-black text-[#0F2542]">Outro</div>
+                            <div className="text-[11px] text-[#708278] italic mt-1">Equipamento que não se encaixa nas categorias acima.</div>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // 2º clique — escolher o tipo específico dentro da categoria
+                  const meta = EQUIPAMENTO_GRUPOS[cat];
+                  const itens = cat === "outro" ? equipFiltrados.filter((t) => t.id === "outro") : equipFiltrados.filter((t) => t.grupo === cat);
+                  return (
+                    <div className="space-y-3 mt-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#0F2542]">{meta?.label || "Outro"}</div>
+                          {meta?.hint && <div className="text-[10px] text-[#708278] italic mt-0.5">{meta.hint}</div>}
+                        </div>
+                        <button type="button" data-testid="cat-trocar"
+                          onClick={() => { set("categoria_equipamento", ""); set("equipamento_tipo", ""); set("sub_tipo", ""); }}
+                          className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#2563EB] hover:underline">
+                          ← Trocar categoria
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {itens.map(renderBtn)}
+                      </div>
+                    </div>
+                  );
+                })()}
               </Field>
-              {/* Sub-tipo (Toco / Truck / 3/4) — apenas para Caminhão Basculante e Carroceria */}
+              {/* Sub-tipo — aplicável a Caminhões (Toco/Truck/3/4) e Carretas (Cavalinho/Basculante/Prancha) */}
               {subTiposDisponiveis.length > 0 && (
                 <div className="mt-4">
-                  <Field label="Sub-tipo" required hint="Selecione o sub-tipo do caminhão. 3/4 disponível apenas em Carroceria.">
+                  <Field label="Sub-tipo" required hint="Selecione o sub-tipo. 3/4 disponível apenas em Caminhão Carroceria.">
                     <div className="grid grid-cols-3 gap-2 mt-2">
                       {subTiposDisponiveis.map((s) => (
                         <button key={s.id} data-testid={`sub-${s.id}`} onClick={() => set("sub_tipo", s.id)}
@@ -1234,7 +1312,10 @@ function Step6Revisao({ data, hasVeiculo, hasMotorista, isAlugado, isProprio }) 
             <div className="bg-white border border-[#E2E8E4] rounded-md p-4">
               <Row k="Porte" v={data.porte} />
               <Row k="Equipamento" v={data.equipamento_tipo === "outro" ? data.equipamento_tipo_outro : data.equipamento_tipo} />
-              <Row k="TAG" v={data.possui_tag === "sim" ? data.tag : "Sem TAG"} />
+              {/* TAG/Placa: se o usuário não tem TAG, o sistema usa a placa
+                  como ID. Aqui mostramos a TAG explícita e a placa logo abaixo
+                  para o operador ter referência clara nas listas/checklists. */}
+              <Row k="TAG" v={data.possui_tag === "sim" ? data.tag : ((data.placa || "").trim() ? `Placa ${data.placa.trim().toUpperCase()}` : "Sem TAG")} />
               <Row k="Placa" v={data.placa || "Sem placa (equipamento)"} />
               <Row k="Sub-tipo" v={data.sub_tipo ? SUB_TIPOS_LABEL[data.sub_tipo] : "—"} />
               <Row k="Origem" v={origemLabel} />

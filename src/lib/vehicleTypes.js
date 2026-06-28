@@ -10,7 +10,7 @@ import { db } from "./firebase";
  *    nome: string,                // "Caminhão Basculante Toco"
  *    categoria: string,           // id de EQUIPAMENTO_TIPOS (caminhao_basculante, ...)
  *    subTipo: string|null,        // "toco" | "truck" | "3_4" | null
- *    porte: string,               // "pesado" | "leve" | "moto"
+ *    porte: string,               // "pesado" | "leve"
  *    medicao: string,             // "horimetro" | "km"
  *    valorMensal: number,
  *    valorHoraExtra: number,

@@ -103,39 +103,68 @@ export const REQ_TYPE_LABEL = {
 };
 
 export const PORTE_VEICULO = [
-  { id: "pesado", label: "Pesado", desc: "Caminhões, máquinas e equipamentos de grande porte." },
-  { id: "leve", label: "Leve", desc: "Veículos de passeio, utilitários e camionetes." },
-  { id: "moto", label: "Moto", desc: "Motocicletas (categoria separada)." },
+  { id: "pesado", label: "Pesado", desc: "Caminhões, máquinas, carretas e equipamentos de grande porte." },
+  { id: "leve", label: "Leve", desc: "Veículos de passeio, utilitários, camionetes e motos." },
 ];
 
-// Sub-tipos aplicáveis a caminhões (Basculante / Carroceria).
+// Sub-tipos aplicáveis a Caminhões (Toco/Truck/3/4) e Carretas (Cavalinho/Basculante/Prancha).
+// Mantemos um único array para facilitar o render — cada equipamento_tipo
+// declara em `subTipos` quais IDs aceita.
 export const SUB_TIPOS_CAMINHAO = [
   { id: "toco", label: "Toco" },
   { id: "truck", label: "Truck" },
   { id: "3_4", label: "3/4" },
+  { id: "carreta_cavalinho", label: "Cavalinho" },
+  { id: "carreta_basculante", label: "Basculante" },
+  { id: "carreta_prancha", label: "Prancha (transporte de equipamentos)" },
 ];
-export const SUB_TIPOS_LABEL = { toco: "Toco", truck: "Truck", "3_4": "3/4" };
+export const SUB_TIPOS_LABEL = {
+  toco: "Toco",
+  truck: "Truck",
+  "3_4": "3/4",
+  carreta_cavalinho: "Cavalinho",
+  carreta_basculante: "Basculante",
+  carreta_prancha: "Prancha",
+};
 
 // `medicao`: define se o equipamento usa Horímetro (escavadeira/retro) ou Quilometragem.
 // `subTipos`: lista de IDs de sub-tipos aceitos (ex: caminhão basculante aceita toco e truck).
+// `grupo`: agrupamento visual dentro do mesmo porte ("caminhoes" / "carretas" / "maquinas").
+//          Equipamentos sem grupo aparecem soltos (ex.: porte Leve).
 export const EQUIPAMENTO_TIPOS = [
-  { id: "retroescavadeira", label: "Retroescavadeira", porte: "pesado", medicao: "horimetro" },
-  { id: "escavadeira", label: "Escavadeira", porte: "pesado", medicao: "horimetro" },
-  { id: "caminhao_pipa", label: "Caminhão Pipa", porte: "pesado", medicao: "km" },
-  { id: "muck", label: "Muck", porte: "pesado", medicao: "km" },
-  { id: "caminhao_basculante", label: "Caminhão Basculante", porte: "pesado", medicao: "km", subTipos: ["toco", "truck"] },
-  { id: "caminhao_carroceria", label: "Caminhão Carroceria", porte: "pesado", medicao: "km", subTipos: ["toco", "truck", "3_4"] },
+  // ────── Pesados · Máquinas ──────
+  { id: "retroescavadeira", label: "Retroescavadeira", porte: "pesado", grupo: "maquinas", medicao: "horimetro" },
+  { id: "escavadeira", label: "Escavadeira", porte: "pesado", grupo: "maquinas", medicao: "horimetro" },
+  { id: "rolo_compactador", label: "Rolo Compactador", porte: "pesado", grupo: "maquinas", medicao: "horimetro" },
+  // ────── Pesados · Caminhões ──────
+  { id: "caminhao_pipa", label: "Caminhão Pipa", porte: "pesado", grupo: "caminhoes", medicao: "km", subTipos: ["toco", "truck"] },
+  { id: "caminhao_muck", label: "Caminhão Muck", porte: "pesado", grupo: "caminhoes", medicao: "km", subTipos: ["toco", "truck"] },
+  { id: "caminhao_basculante", label: "Caminhão Basculante", porte: "pesado", grupo: "caminhoes", medicao: "km", subTipos: ["toco", "truck"] },
+  { id: "caminhao_carroceria", label: "Caminhão Carroceria", porte: "pesado", grupo: "caminhoes", medicao: "km", subTipos: ["toco", "truck", "3_4"] },
+  // ────── Pesados · Carretas ──────
+  { id: "carreta", label: "Carreta", porte: "pesado", grupo: "carretas", medicao: "km", subTipos: ["carreta_cavalinho", "carreta_basculante", "carreta_prancha"] },
+  // ────── Leves ──────
   { id: "carro", label: "Carro", porte: "leve", medicao: "km" },
   { id: "caminhonete", label: "Caminhonete", porte: "leve", medicao: "km" },
   { id: "van", label: "Van / Utilitário", porte: "leve", medicao: "km" },
-  { id: "moto", label: "Moto", porte: "moto", medicao: "km" },
+  { id: "moto", label: "Moto", porte: "leve", medicao: "km" },
+  // ────── Outros ──────
   { id: "outro", label: "Outro", porte: null, medicao: "ambos" },
 ];
 
+// Metadados dos grupos visuais (para os hints na UI do Wizard).
+export const EQUIPAMENTO_GRUPOS = {
+  caminhoes: { label: "Caminhões", hint: "Caminhões diversos (Pipa, Muck, Basculante, Carroceria) — exigem sub-tipo Toco/Truck/3/4." },
+  carretas: { label: "Carretas", hint: "Conjuntos de carreta — Cavalinho, Basculante e Prancha (para transporte de equipamentos pesados)." },
+  maquinas: { label: "Máquinas", hint: "Equipamentos de movimentação e escavação — medição por horímetro." },
+};
+
 // Mapeamento de legados → IDs novos (para retrocompatibilidade visual).
+// `muck` legado vira `caminhao_muck` para registros antigos seguirem funcionando.
 export const EQUIPAMENTO_TIPO_ALIASES = {
   caminhao: "caminhao_basculante",
   trator: "caminhao_carroceria",
+  muck: "caminhao_muck",
 };
 
 // Helper: para um tipo de equipamento, retorna a configuração consolidada.

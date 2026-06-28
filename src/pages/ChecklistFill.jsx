@@ -8,6 +8,7 @@ import { filterOperationalDrivers } from "../lib/drivers";
 import { resolveTemplateForVehicle } from "../lib/checklistTemplateResolver";
 import { notifyWhatsApp } from "../lib/whatsapp";
 import { toast } from "sonner";
+import { vehicleLabel } from "../lib/vehicleLabel";
 import { Camera, Printer, Truck, User, ClipboardText, Devices, CheckCircle, ShieldCheck } from "@phosphor-icons/react";
 
 // =============================================================================
@@ -209,7 +210,7 @@ export default function ChecklistFill({ mode = "digital" }) {
       });
       const message = `🔔 *MACRO AMBIENTAL — Checklist Registrado*
 
-🚛 Veículo: ${vehicle?.tag || "—"}
+🚛 Veículo: ${vehicleLabel(vehicle)}
 📋 Template: ${template?.name || "—"}
 👤 Preenchido por: ${profile.name}${driver ? `\n👷 Motorista: ${driver.name}` : ""}
 🕐 Em: ${new Date().toLocaleString("pt-BR")}
@@ -311,8 +312,7 @@ ${window.location.origin}/checklists`;
           <div className="flex-1">
             <div className="text-[11px] uppercase tracking-[0.2em] font-bold opacity-70">Seu veículo</div>
             <div className="font-[Outfit,sans-serif] text-xl font-bold flex items-center gap-2 flex-wrap mt-0.5">
-              <span>{vehicle.tag}</span>
-              {vehicle.placa && <span className="text-sm font-bold bg-white/20 px-2 py-0.5 rounded">{vehicle.placa}</span>}
+              <span>{vehicleLabel(vehicle)}</span>
             </div>
             <div className="text-xs opacity-80 mt-0.5">{vehicle.marca} {vehicle.modelo}</div>
           </div>
@@ -341,7 +341,7 @@ ${window.location.origin}/checklists`;
             <select data-testid="cl-vehicle" value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}
               className="w-full border border-[#E2E8E4] px-4 py-3 rounded-md text-sm focus:outline-none focus:border-[#1E3A5F]">
               <option value="">Selecione um veículo ativo…</option>
-              {vehiclesForSelect.map((v) => <option key={v.id} value={v.id}>{v.tag}{v.placa ? ` · ${v.placa}` : ""} — {v.marca} {v.modelo}</option>)}
+              {vehiclesForSelect.map((v) => <option key={v.id} value={v.id}>{vehicleLabel(v)} — {v.marca} {v.modelo}</option>)}
             </select>
             {isMotoristaApp && myVehicles.length === 0 && vehicles.length > 0 && (
               <div className="text-[11px] text-[#708278] mt-1.5 italic">Você ainda não tem veículo titular vinculado — selecione manualmente.</div>

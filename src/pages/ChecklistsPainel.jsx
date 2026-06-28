@@ -4,6 +4,7 @@ import { collection, query, where, onSnapshot, getDocs } from "firebase/firestor
 import { db } from "../lib/firebase";
 import { useAuth } from "../contexts/AuthContext";
 import { VEHICLE_STATUS, ROLES } from "../lib/constants";
+import { vehicleLabel } from "../lib/vehicleLabel";
 import { CheckCircle, XCircle, Truck, Clock, Warning, ChartBar } from "@phosphor-icons/react";
 
 /**
@@ -163,7 +164,7 @@ export default function ChecklistsPainel() {
                       {status === "nao_conforme" && <span className="inline-flex items-center gap-1 text-[#DC2626] text-xs font-bold uppercase tracking-[0.15em]"><XCircle size={14} weight="fill" /> Não conforme</span>}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-bold text-[#0F2542]">{v.tag || v.placa || v.id.slice(0, 8)}</div>
+                      <div className="font-bold text-[#0F2542]">{vehicleLabel(v)}</div>
                       <div className="text-[11px] text-[#708278]">{v.marca} {v.modelo}</div>
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell text-[#4A564F]">

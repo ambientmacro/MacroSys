@@ -5,6 +5,7 @@ import { db } from "../lib/firebase";
 import { useAuth } from "../contexts/AuthContext";
 import { VEHICLE_STATUS, VEHICLE_STATUS_LABEL, COMBUSTIVEIS, ROLES, DRIVER_STATUS, ORIGEM_TIPOS } from "../lib/constants";
 import { filterOperationalDrivers } from "../lib/drivers";
+import { vehicleLabel } from "../lib/vehicleLabel";
 import { resolveTemplateForVehicle } from "../lib/checklistTemplateResolver";
 import { toast } from "sonner";
 import { ArrowLeft, FloppyDisk, Truck, User, ClipboardText, PencilSimple, Plus, X, FileText } from "@phosphor-icons/react";
@@ -230,7 +231,7 @@ export default function VehicleDetail() {
         <div>
           <div className="text-xs uppercase tracking-[0.25em] text-[#708278] font-bold">Frota</div>
           <h1 className="font-[Outfit,sans-serif] text-3xl font-black tracking-tight text-[#0F1411] mt-2 flex items-center gap-3 flex-wrap">
-            <Truck size={28} weight="duotone" className="text-[#2563EB]" /> {vehicle.tag}
+            <Truck size={28} weight="duotone" className="text-[#2563EB]" /> {vehicleLabel(vehicle)}
             {vehicle.placa && <span className="text-base font-bold bg-[#1E3A5F] text-white px-2 py-1 rounded">{vehicle.placa}</span>}
           </h1>
           <p className="text-sm text-[#4A564F] mt-1">{vehicle.marca} {vehicle.modelo} · {vehicle.ano}</p>
@@ -402,7 +403,7 @@ export default function VehicleDetail() {
           <>
             <h3 className="text-lg font-bold text-[#0F2542] font-[Outfit,sans-serif]">Dados</h3>
             <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-              <Row k="TAG" v={vehicle.tag} />
+              <Row k="TAG" v={vehicleLabel(vehicle)} />
               <Row k="Equipamento" v={vehicle.equipamento_tipo} />
               <Row k="Marca / Modelo" v={`${vehicle.marca || ""} ${vehicle.modelo || ""}`} />
               <Row k="Ano" v={vehicle.ano} />
@@ -496,7 +497,7 @@ export default function VehicleDetail() {
               {conflictDialog.conflicts.map((c) => (
                 <li key={c.id} className="flex items-center gap-2 bg-[#FFF8E7] border border-[#D9A05B]/30 rounded-md px-3 py-2 text-sm" data-testid={`conflito-veiculo-${c.id}`}>
                   <Truck size={14} className="text-[#8B5E2B]" weight="duotone" />
-                  <span className="font-bold text-[#5B3F1A] truncate">{c.tag || c.placa || c.id}</span>
+                  <span className="font-bold text-[#5B3F1A] truncate">{vehicleLabel(c)}</span>
                   <span className="text-[11px] text-[#8B5E2B]">{c.marca} {c.modelo}</span>
                 </li>
               ))}
