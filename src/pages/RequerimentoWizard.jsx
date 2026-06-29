@@ -1335,6 +1335,7 @@ function Step6Revisao({ data, hasVeiculo, hasMotorista, isAlugado, isProprio }) 
               {isAlugado && data.tipoSnapshot && <Row k="Hora extra" v={formatCurrency(data.tipoSnapshot.valorHoraExtra)} />}
               {isAlugado && data.tipoSnapshot && <Row k="Dia extra" v={formatCurrency(data.tipoSnapshot.valorDiaExtra)} />}
               <Row k="Vencimento CRLV" v={data.vencimento_crlv} />
+              <Row k="Observação do veículo:" v={data.observacoes_veiculo} />
             </div>
             {hasMotorista && (
               <div className="bg-[#EFF3F8] border border-[#2563EB]/20 rounded-md p-3 mt-3">
