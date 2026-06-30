@@ -28,6 +28,11 @@ export default function VehicleDetail() {
   const canEdit = [ROLES.ADMIN, ROLES.FROTA, ROLES.DP].includes(profile.role);
   // Vinculação de motorista titular: apenas Frota/DP/Admin (Encarregado faz apenas via Requerimento/Equipe).
   const canLinkDriver = [ROLES.ADMIN, ROLES.FROTA, ROLES.DP].includes(profile.role);
+  // Edição de campos financeiros / Origem / Valor mensal: APENAS Medição
+  // (responsável pelo catálogo de valores) ou Admin. Frota NÃO pode alterar
+  // — esses campos vêm do "Tipo de Veículo" controlado pela Medição. Por isso
+  // ficam desabilitados visualmente quando o perfil é Frota.
+  const canEditFinanceiro = [ROLES.ADMIN, ROLES.MEDICAO].includes(profile.role);
 
   useEffect(() => {
     (async () => {
@@ -121,24 +126,32 @@ export default function VehicleDetail() {
       // Normaliza placa para busca/uniqueness (vide RequerimentoWizard).
       const placa = (form.placa || "").trim().toUpperCase();
       const placaNormalizada = placa.replace(/[^A-Z0-9]/g, "") || null;
+      // Blindagem do backend (mesmo se alguém burlar `disabled` no DOM):
+      // só usuários com `canEditFinanceiro` podem alterar Origem/Valores.
+      // Para os demais, mantemos os valores atuais do documento original.
+      const origemFinal = canEditFinanceiro ? (form.origem || "proprio") : (vehicle.origem || "proprio");
+      const valorAluguelFinal = canEditFinanceiro ? (Number(form.valorAluguelMensal) || 0) : (Number(vehicle.valorAluguelMensal) || 0);
+      const valorPatrimonioFinal = canEditFinanceiro ? (Number(form.valorPatrimonio) || 0) : (Number(vehicle.valorPatrimonio) || 0);
       await updateDoc(doc(db, "vehicles", id), {
-        tag: form.tag,
+        // Garantia: Firestore rejeita `undefined`. Campos opcionais que podem
+        // não existir no documento legado viram `null` para passar no validator.
+        tag: form.tag ?? null,
         placa: placa || null,
         placaNormalizada,
-        marca: form.marca,
-        modelo: form.modelo,
-        ano: form.ano,
-        combustivel: form.combustivel,
-        capacidade: form.capacidade,
-        horimetro: form.horimetro,
-        quilometragem: form.quilometragem,
-        centro_custo: form.centro_custo,
-        unidade: form.unidade,
-        empresa: form.empresa,
-        origem: form.origem || "proprio",
+        marca: form.marca ?? null,
+        modelo: form.modelo ?? null,
+        ano: form.ano ?? null,
+        combustivel: form.combustivel ?? null,
+        capacidade: form.capacidade ?? null,
+        horimetro: form.horimetro ?? null,
+        quilometragem: form.quilometragem ?? null,
+        centro_custo: form.centro_custo ?? null,
+        unidade: form.unidade ?? null,
+        empresa: form.empresa ?? null,
+        origem: origemFinal,
         // Campos de custo/gestão para relatórios da Frota:
-        valorAluguelMensal: Number(form.valorAluguelMensal) || 0,
-        valorPatrimonio: Number(form.valorPatrimonio) || 0,
+        valorAluguelMensal: valorAluguelFinal,
+        valorPatrimonio: valorPatrimonioFinal,
         dataAquisicao: form.dataAquisicao || null,
         vencimentoCRLV: form.vencimentoCRLV || null,
         teamId: form.teamId || null,
@@ -279,23 +292,36 @@ export default function VehicleDetail() {
               <Field l="Unidade"><input value={form.unidade || ""} onChange={(e) => set("unidade", e.target.value)} className={inp} /></Field>
             </div>
 
-            {/* Bloco custo/gestão para Frota — campos inegociáveis para relatórios. */}
+            {/* Bloco custo/gestão para Frota — campos inegociáveis para relatórios.
+                Origem e Valores são editáveis APENAS pelo perfil Medição/Admin —
+                Frota visualiza em readonly. */}
             <div className="pt-4 border-t border-[#E2E8E4]">
               <h4 className="text-xs uppercase tracking-[0.2em] font-bold text-[#0F2542] mb-3">Custos e Gestão (Frota)</h4>
+              {!canEditFinanceiro && (
+                <div className="text-[11px] text-[#92400E] bg-[#FEF3C7] border border-[#F59E0B]/40 rounded-md px-3 py-2 mb-3" data-testid="readonly-financeiro">
+                  Origem e valores são definidos pelo perfil <strong>Medição</strong> (via Catálogo de Tipos de Veículo). Esses campos ficam em modo leitura aqui.
+                </div>
+              )}
               <div className="grid sm:grid-cols-2 gap-4">
                 <Field l="Origem">
-                  <select value={form.origem || "proprio"} onChange={(e) => set("origem", e.target.value)} className={inp} data-testid="ev-origem">
+                  <select value={form.origem || "proprio"} onChange={(e) => set("origem", e.target.value)}
+                    disabled={!canEditFinanceiro}
+                    className={`${inp} ${!canEditFinanceiro ? "bg-[#F5F7FA] text-[#708278] cursor-not-allowed" : ""}`} data-testid="ev-origem">
                     {ORIGEM_TIPOS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                     {/* Compatibilidade com origens legadas pré-migração */}
                     {form.origem === "alugado" && <option value="alugado">Alugado (legado)</option>}
                     {form.origem === "prestacao" && <option value="prestacao">Prestação de serviço (legado)</option>}
                   </select>
                 </Field>
-                <Field l="Valor mensal de aluguel (R$)" hint="Campo alterado pelo perfomace">
-                  <input type="number" value={form.valorAluguelMensal || ""} onChange={(e) => set("valorAluguelMensal", e.target.value)} className={inp} placeholder="15000" data-testid="ev-aluguel" />
+                <Field l="Valor mensal de aluguel (R$)" hint="Definido pela Medição via Tipo de Veículo.">
+                  <input type="number" value={form.valorAluguelMensal || ""} onChange={(e) => set("valorAluguelMensal", e.target.value)}
+                    disabled={!canEditFinanceiro}
+                    className={`${inp} ${!canEditFinanceiro ? "bg-[#F5F7FA] text-[#708278] cursor-not-allowed" : ""}`} placeholder="15000" data-testid="ev-aluguel" />
                 </Field>
-                <Field l="Valor de patrimônio (R$)" hint="Para veículos próprios.">
-                  <input type="number" value={form.valorPatrimonio || ""} onChange={(e) => set("valorPatrimonio", e.target.value)} className={inp} placeholder="350000" data-testid="ev-patrimonio" />
+                <Field l="Valor de patrimônio (R$)" hint="Para veículos próprios. Definido pela Medição.">
+                  <input type="number" value={form.valorPatrimonio || ""} onChange={(e) => set("valorPatrimonio", e.target.value)}
+                    disabled={!canEditFinanceiro}
+                    className={`${inp} ${!canEditFinanceiro ? "bg-[#F5F7FA] text-[#708278] cursor-not-allowed" : ""}`} placeholder="350000" data-testid="ev-patrimonio" />
                 </Field>
                 <Field l="Data de aquisição">
                   <input type="date" value={form.dataAquisicao || ""} onChange={(e) => set("dataAquisicao", e.target.value)} className={inp} data-testid="ev-data-aquisicao" />

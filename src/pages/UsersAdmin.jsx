@@ -638,7 +638,12 @@ export default function UsersAdmin() {
 // Modal de criação de login (e-mail OU matrícula 7 dígitos)
 // =============================================================================
 function CreateLoginModal({ driver, busy, onClose, onSubmit }) {
-  const [kind, setKind] = useState("email"); // "email" | "matricula"
+  // OPÇÃO DE LOGIN POR E-MAIL DESATIVADA TEMPORARIAMENTE — decisão do
+  // usuário (operação atual da empresa usa apenas matrícula). Para reativar
+  // no futuro: descomente o bloco "Tabs — escolha do tipo de identificador",
+  // o branch `kind === "email"` no input e a dica de reset por Firebase, e
+  // troque a linha abaixo para `useState("email")`.
+  const [kind /* , setKind */] = useState("matricula"); // "email" | "matricula"
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
 
@@ -658,7 +663,8 @@ function CreateLoginModal({ driver, busy, onClose, onSubmit }) {
           <button onClick={onClose} className="text-[#708278] hover:text-[#0F1411]"><X size={20} /></button>
         </div>
 
-        {/* Tabs — escolha do tipo de identificador */}
+        {/* ───────── Tabs — escolha do tipo de identificador (DESATIVADO) ─────────
+            Mantemos o JSX comentado para reativar futuramente sem reescrita.
         <div className="mt-5 grid grid-cols-2 gap-2 bg-[#F5F7FA] rounded-md p-1">
           <button onClick={() => { setKind("email"); setIdentifier(""); }} data-testid="tab-login-email"
             className={`flex items-center justify-center gap-2 py-2.5 rounded text-xs font-bold uppercase tracking-[0.1em] transition-all ${kind === "email" ? "bg-white shadow text-[#0F2542]" : "text-[#708278]"}`}>
@@ -669,16 +675,25 @@ function CreateLoginModal({ driver, busy, onClose, onSubmit }) {
             <IdentificationCard size={14} /> Matrícula
           </button>
         </div>
+        ─────────────────────────────────────────────────────────────────────── */}
+
+        {/* Indicador visível de que o login é por matrícula (substitui as tabs). */}
+        <div className="mt-5 bg-[#EFF3F8] border border-[#2563EB]/30 rounded-md p-3 flex items-center gap-2" data-testid="login-only-matricula">
+          <IdentificationCard size={16} className="text-[#2563EB]" weight="duotone" />
+          <div className="text-[11px] text-[#0F2542] font-bold uppercase tracking-[0.1em]">Login por Matrícula</div>
+        </div>
 
         {/* Campo identificador */}
         <div className="mt-4">
           <label className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#708278] block mb-1.5">
-            {kind === "email" ? "E-mail do motorista" : "Matrícula (letras maiúsculas e números, mín. 7 chars)"}
+            {/* Branch "E-mail" mantido comentado para retomada futura:
+                {kind === "email" ? "E-mail do motorista" : "Matrícula …"} */}
+            Matrícula (letras maiúsculas e números, mín. 7 chars)
           </label>
           <input
             value={identifier}
             onChange={(e) => setIdentifier(kind === "matricula" ? e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") : e.target.value)}
-            placeholder={kind === "email" ? "exemplo@empresa.com" : "MOT12345 ou 1234567"}
+            placeholder={kind === "matricula" ? "MOT12345 ou 1234567" : "exemplo@empresa.com"}
             inputMode={kind === "matricula" ? "numeric" : "email"}
             className={inp}
             data-testid="modal-identifier"
@@ -688,11 +703,10 @@ function CreateLoginModal({ driver, busy, onClose, onSubmit }) {
               Login interno: <code>{pseudoPreview}</code> (transparente — motorista digita só os 7 dígitos)
             </div>
           )}
+          {/* Hint de reset por Firebase (e-mail) — comentado:
           {kind === "email" && (
-            <div className="text-[11px] text-[#708278] mt-1 italic">
-              Reset de senha funciona via Firebase.
-            </div>
-          )}
+            <div className="text-[11px] text-[#708278] mt-1 italic">Reset de senha funciona via Firebase.</div>
+          )} */}
         </div>
 
         {/* Senha */}

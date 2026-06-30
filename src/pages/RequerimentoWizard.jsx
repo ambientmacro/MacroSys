@@ -184,18 +184,46 @@ export default function RequerimentoWizard() {
       if (hasVeiculo && !data.porte) return "Selecione o porte do veículo.";
       if (hasVeiculo && !data.equipamento_tipo) return "Selecione o tipo de equipamento.";
       if (hasVeiculo && data.equipamento_tipo === "outro" && !data.equipamento_tipo_outro) return "Especifique o tipo de equipamento.";
-      if (hasVeiculo && subTiposDisponiveis.length > 0 && !data.sub_tipo) return "Selecione o sub-tipo (Toco / Truck / 3⁄4).";
+      // Sub-tipo é obrigatório apenas para Caminhões (Toco/Truck/3-4 é
+      // exigência operacional). Para Carretas, o sub-tipo (Cavalinho/
+      // Basculante/Prancha) é opcional — o usuário pode cadastrar somente
+      // "Carreta" e definir o implemento depois.
+      if (hasVeiculo && subTiposDisponiveis.length > 0 && !data.sub_tipo && equipCfg?.grupo === "caminhoes") {
+        return "Selecione o sub-tipo do caminhão (Toco / Truck / 3⁄4).";
+      }
       if (hasMotorista && !data.motorista_nome) return "Informe o nome do motorista.";
       if (hasMotorista && !data.motorista_cnh) return "Informe a CNH do motorista.";
     }
     if (step === 3) {
       if (hasVeiculo && data.possui_tag === "sim" && !data.tag.trim()) return "Informe o número da TAG.";
+      if (hasVeiculo) {
+        // Placa é obrigatória — todo veículo precisa estar emplacado para
+        // operar (mesmo equipamentos pesados normalmente têm placa registrada).
+        const placa = (data.placa || "").trim().toUpperCase();
+        if (!placa) return "Informe a placa do veículo.";
+        // Formato BR: ABC1234 (antiga) ou ABC1D23 (Mercosul). 7 chars sem hífen.
+        const placaNorm = placa.replace(/[^A-Z0-9]/g, "");
+        if (!/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(placaNorm)) {
+          return "Placa inválida. Use o padrão ABC1234 (antiga) ou ABC1D23 (Mercosul).";
+        }
+      }
       if (hasMotorista && !data.motorista_telefone) return "Informe o telefone do motorista.";
     }
     if (step === 5) {
       if (hasVeiculo && (!data.marca || !data.modelo)) return "Marca e modelo são obrigatórios.";
-      // Ano de fabricação OBRIGATÓRIO sempre (próprio ou alugado).
-      if (hasVeiculo && (!data.ano || String(data.ano).length < 4)) return "Ano de fabricação é obrigatório.";
+      // Ano de fabricação OBRIGATÓRIO sempre (próprio ou alugado). Deve estar
+      // entre 1900 e o ano corrente — não permitimos cadastrar veículo com ano
+      // futuro (só pode operar veículo já fabricado).
+      if (hasVeiculo) {
+        const anoStr = String(data.ano || "").trim();
+        if (!anoStr || anoStr.length !== 4 || !/^\d{4}$/.test(anoStr)) {
+          return "Informe o ano de fabricação com 4 dígitos.";
+        }
+        const anoNum = Number(anoStr);
+        const anoAtual = new Date().getFullYear();
+        if (anoNum < 1900) return "Ano de fabricação inválido — deve ser maior ou igual a 1900.";
+        if (anoNum > anoAtual) return `Ano de fabricação não pode ser maior que ${anoAtual} (ano atual).`;
+      }
       // Horímetro / KM conforme tipo do equipamento.
       if (hasVeiculo && useHorimetro && !String(data.horimetro || "").trim()) return "Horímetro é obrigatório para este equipamento.";
       if (hasVeiculo && useKm && !String(data.quilometragem || "").trim()) return "Quilometragem é obrigatória para este equipamento.";
@@ -763,10 +791,13 @@ function Step2Dados({ data, set, hasVeiculo, hasMotorista, subTiposDisponiveis =
                   );
                 })()}
               </Field>
-              {/* Sub-tipo — aplicável a Caminhões (Toco/Truck/3/4) e Carretas (Cavalinho/Basculante/Prancha) */}
+              {/* Sub-tipo — obrigatório para Caminhões (Toco/Truck/3-4); opcional para Carretas. */}
               {subTiposDisponiveis.length > 0 && (
                 <div className="mt-4">
-                  <Field label="Sub-tipo" required hint="Selecione o sub-tipo. 3/4 disponível apenas em Caminhão Carroceria.">
+                  <Field label={`Sub-tipo${equipCfg?.grupo === "caminhoes" ? "" : " (opcional)"}`} required={equipCfg?.grupo === "caminhoes"}
+                    hint={equipCfg?.grupo === "caminhoes"
+                      ? "Selecione o sub-tipo do caminhão. 3/4 disponível apenas em Caminhão Carroceria."
+                      : "Opcional. Se for cadastrar somente a carreta (sem implemento definido), pode deixar em branco."}>
                     <div className="grid grid-cols-3 gap-2 mt-2">
                       {subTiposDisponiveis.map((s) => (
                         <button key={s.id} data-testid={`sub-${s.id}`} onClick={() => set("sub_tipo", s.id)}
@@ -1112,8 +1143,15 @@ function Step5Detalhes({ data, set, hasVeiculo, hasMotorista, isAlugado, isPropr
           <div className="grid sm:grid-cols-3 gap-4">
             <Field label="Marca" required><input data-testid="marca" value={data.marca} onChange={(e) => set("marca", e.target.value)} className={inp} placeholder="Caterpillar" /></Field>
             <Field label="Modelo" required><input data-testid="modelo" value={data.modelo} onChange={(e) => set("modelo", e.target.value)} className={inp} placeholder="416F2" /></Field>
-            <Field label="Ano de Fabricação" required hint="Obrigatório (próprio ou alugado).">
-              <input data-testid="ano" type="number" value={data.ano} onChange={(e) => set("ano", e.target.value)} className={inp} placeholder="2022" />
+            <Field label="Ano de Fabricação" required hint={`Obrigatório (próprio ou alugado). Entre 1900 e ${new Date().getFullYear()}.`}>
+              <input data-testid="ano" type="number" min="1900" max={new Date().getFullYear()} step="1"
+                value={data.ano}
+                onChange={(e) => {
+                  // Aceita só dígitos e tope no ano atual — evita digitar 9999/2099.
+                  const v = String(e.target.value || "").replace(/[^0-9]/g, "").slice(0, 4);
+                  set("ano", v);
+                }}
+                className={inp} placeholder={`Ex: ${new Date().getFullYear() - 4}`} />
             </Field>
             <Field label="Combustível">
               <select data-testid="combustivel" value={data.combustivel} onChange={(e) => set("combustivel", e.target.value)} className={inp}>
@@ -1335,7 +1373,6 @@ function Step6Revisao({ data, hasVeiculo, hasMotorista, isAlugado, isProprio }) 
               {isAlugado && data.tipoSnapshot && <Row k="Hora extra" v={formatCurrency(data.tipoSnapshot.valorHoraExtra)} />}
               {isAlugado && data.tipoSnapshot && <Row k="Dia extra" v={formatCurrency(data.tipoSnapshot.valorDiaExtra)} />}
               <Row k="Vencimento CRLV" v={data.vencimento_crlv} />
-              <Row k="Observação do veículo:" v={data.observacoes_veiculo} />
             </div>
             {hasMotorista && (
               <div className="bg-[#EFF3F8] border border-[#2563EB]/20 rounded-md p-3 mt-3">
