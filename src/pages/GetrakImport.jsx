@@ -100,12 +100,23 @@ const parseGetrakSheet = (workbook) => {
       header.forEach((h, i) => { obj[h] = row[i] ?? ""; });
       return obj;
     })
-    // Descarta linhas-resumo (totalização) e linhas em branco.
+    // Descarta linhas-resumo (totalização), sub-headers repetidos e linhas em branco.
     .filter((r) => {
       const apl = String(r["Apelido/Placa"] || "").trim();
       const hora = String(r["Hora início"] || "").trim();
       if (!apl || !hora) return false;
       if (/tempo\s+total/i.test(apl)) return false;
+
+      const localIni = String(r["Local inicial"] || "").trim();
+      const localFim = String(r["Local final"] || "").trim();
+      // Linha de TOTALIZAÇÃO: os locais vêm como "-" (traço), NÃO vazios.
+      // Sem esse filtro, a distância do veículo fica DUPLICADA (ex.: 22.9→45.7 km).
+      if (localIni === "-" || localFim === "-") return false;
+      // Sub-headers do bloco de resumo do próximo veículo. O GETRAK repete
+      // "Local inicial do período", "Local inicial" etc. como se fossem dados.
+      const isHeaderLike = (s) => /^local\s+(inicial|final)(\s+do\s+per[ií]odo)?$/i.test(s);
+      if (isHeaderLike(localIni) || isHeaderLike(localFim)) return false;
+
       return true;
     });
 };
