@@ -182,6 +182,34 @@ export default function ChecklistFill({ mode = "digital" }) {
       toast.error("Vistoria de Entrada", { description: "Apenas o Adm de Frota pode lançar a 1ª execução deste veículo." });
       return;
     }
+    // Validação de itens obrigatórios do template ANTES de disparar o busy.
+    // Para itens do tipo "photo" (ou com `allowPhoto`) marcados como
+    // required, exige o anexo — a UI já mostra o `*` mas antes o motorista
+    // conseguia enviar mesmo assim.
+    const itens = template?.items || [];
+    for (const item of itens) {
+      if (!item.required) continue;
+      const isPhotoOnly = item.type === "photo";
+      if (isPhotoOnly) {
+        if (!photos[item.id]) {
+          toast.error(`Foto obrigatória: "${item.label}"`, { description: "Anexe a foto para prosseguir." });
+          return;
+        }
+        continue;
+      }
+      // Itens booleanos/select obrigatórios precisam de resposta.
+      const v = answers[item.id];
+      if (v === undefined || v === null || v === "") {
+        toast.error(`Item obrigatório: "${item.label}"`, { description: "Marque uma opção antes de enviar." });
+        return;
+      }
+      // Se o item permite foto E foi marcado como required-com-foto,
+      // exige também o anexo. (`allowPhoto` sozinho continua opcional.)
+      if (item.requirePhoto && !photos[item.id]) {
+        toast.error(`Foto obrigatória: "${item.label}"`, { description: "Este item exige comprovação por foto." });
+        return;
+      }
+    }
     setBusy(true);
     try {
       const docRef = await addDoc(collection(db, "checklists"), {
