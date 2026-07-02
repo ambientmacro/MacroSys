@@ -92,6 +92,7 @@ export const getMenuByRole = (role) => {
       { path: "/requerimentos/novo", label: "Novo Requerimento CLT", icon: "PlusCircle" },
       { path: "/requerimentos", label: "Requerimentos", icon: "FileText" },
       { path: "/users", label: "Criar Login Motorista", icon: "UserGear" },
+      { path: "/temas", label: "Temas por Perfil", icon: "Palette" },
     ],
     [ROLES.SEGURANCA]: [
       ...common,
@@ -134,6 +135,7 @@ export const getMenuByRole = (role) => {
       { path: "/checklists", label: "Checklists", icon: "ListChecks" },
       { path: "/vistorias", label: "Vistorias", icon: "ClipboardText" },
       { path: "/users", label: "Usuários", icon: "UserGear" },
+      { path: "/temas", label: "Temas por Perfil", icon: "Palette" },
     ],
   };
 

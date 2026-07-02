@@ -31,11 +31,14 @@ import ChecklistsPainel from "@/pages/ChecklistsPainel";
 import GetrakImport from "@/pages/GetrakImport";
 import TemplateRevisao from "@/pages/TemplateRevisao";
 import FrotaCustos from "@/pages/FrotaCustos";
+import ThemeAdmin from "@/pages/ThemeAdmin";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ROLES } from "@/lib/constants";
 
 function App() {
   return (
     <AuthProvider>
+      <ThemeProvider>
       <BrowserRouter>
         <Toaster position="top-right" richColors closeButton />
         <Routes>
@@ -146,11 +149,17 @@ function App() {
             <Route path="/users" element={
               <ProtectedRoute allow={[ROLES.ADMIN, ROLES.ENCARREGADO, ROLES.FROTA, ROLES.DP]}><UsersAdmin /></ProtectedRoute>
             } />
+
+            {/* Temas por perfil — DP/Admin */}
+            <Route path="/temas" element={
+              <ProtectedRoute allow={[ROLES.DP, ROLES.ADMIN]}><ThemeAdmin /></ProtectedRoute>
+            } />
           </Route>
 
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </BrowserRouter>
+      </ThemeProvider>
     </AuthProvider>
   );
 }

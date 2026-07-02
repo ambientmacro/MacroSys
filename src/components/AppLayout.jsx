@@ -8,9 +8,14 @@ import InstallAppButton from "./InstallAppButton";
 import {
   House, ClipboardText, ListChecks, PlusCircle, FileText, Users, Truck,
   Stack, UserGear, Devices, SignOut, List, X, Drop, Bell,
+  ChartBar, ChatCircleText, ClockClockwise, CurrencyCircleDollar, FileXls, Palette,
 } from "@phosphor-icons/react";
 
-const ICONS = { House, ClipboardText, ListChecks, PlusCircle, FileText, Users, Truck, Stack, UserGear, Devices };
+const ICONS = {
+  House, ClipboardText, ListChecks, PlusCircle, FileText, Users, Truck,
+  Stack, UserGear, Devices, ChartBar, ChatCircleText, ClockClockwise,
+  CurrencyCircleDollar, FileXls, Palette,
+};
 
 export default function AppLayout() {
   const { profile, logout } = useAuth();
@@ -26,44 +31,47 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA] text-[#0F1411] font-[Manrope,sans-serif]">
+    <div className="min-h-screen font-[Manrope,sans-serif]" style={{ background: "var(--app-bg)", color: "var(--app-text)" }}>
       {/* Mobile header */}
-      <header className="lg:hidden sticky top-0 z-30 bg-[#0F2542] text-white flex items-center justify-between px-4 py-3">
-        <button onClick={() => setOpen(!open)} data-testid="mobile-menu-btn" className="p-2 -ml-2 text-white">
+      <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3"
+        style={{ background: "var(--app-sidebar-bg)", color: "var(--app-sidebar-fg)" }}>
+        <button onClick={() => setOpen(!open)} data-testid="mobile-menu-btn" className="p-2 -ml-2" style={{ color: "var(--app-sidebar-fg)" }}>
           {open ? <X size={22} /> : <List size={22} />}
         </button>
         <div className="flex items-center gap-2">
-          <Drop size={22} weight="fill" className="text-[#3B82F6]" />
+          <Drop size={22} weight="fill" style={{ color: "var(--app-primary)" }} />
           <span className="font-[Outfit,sans-serif] font-black tracking-tight">MACRO AMBIENTAL</span>
         </div>
-        <button onClick={handleLogout} data-testid="mobile-logout" className="p-2 -mr-2 text-white"><SignOut size={20} /></button>
+        <button onClick={handleLogout} data-testid="mobile-logout" className="p-2 -mr-2" style={{ color: "var(--app-sidebar-fg)" }}><SignOut size={20} /></button>
       </header>
 
       <div className="flex">
-        {/* Sidebar - DARK NAVY */}
+        {/* Sidebar — cor controlada pelo tema do perfil (var --app-sidebar-bg). */}
         <aside
-          className={`fixed lg:sticky top-0 left-0 z-40 h-screen w-72 bg-gradient-to-b from-[#0F2542] to-[#16294A] text-white flex flex-col transition-transform duration-200 ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+          data-testid="app-sidebar"
+          style={{ background: "var(--app-sidebar-bg)", color: "var(--app-sidebar-fg)" }}
+          className={`fixed lg:sticky top-0 left-0 z-40 h-screen w-72 flex flex-col transition-transform duration-200 ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
         >
           {/* Logo */}
           <div className="px-6 py-7 border-b border-white/10">
             <Link to="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
-              <div className="w-10 h-10 rounded-md bg-gradient-to-br from-[#3B82F6] to-[#1D4ED8] flex items-center justify-center">
-                <Drop size={22} weight="fill" className="text-white" />
+              <div className="w-10 h-10 rounded-md flex items-center justify-center" style={{ background: "var(--app-primary)" }}>
+                <Drop size={22} weight="fill" style={{ color: "var(--app-primary-fg)" }} />
               </div>
               <div>
                 <div className="font-[Outfit,sans-serif] font-black text-lg leading-none tracking-tight">MACRO</div>
-                <div className="text-[10px] uppercase tracking-[0.3em] text-white/60 font-bold mt-1">Ambiental</div>
+                <div className="text-[10px] uppercase tracking-[0.3em] font-bold mt-1 opacity-60">Ambiental</div>
               </div>
             </Link>
           </div>
 
           {/* Profile */}
           <div className="px-5 py-4 border-b border-white/10 bg-white/5">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-white/50 font-bold">Perfil</div>
-            <div className="text-sm font-bold text-white mt-0.5" data-testid="profile-role">
+            <div className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-50">Perfil</div>
+            <div className="text-sm font-bold mt-0.5" data-testid="profile-role">
               {ROLE_LABELS[profile?.role] || "—"}
             </div>
-            <div className="text-xs text-white/70 mt-0.5 truncate">{profile?.name || profile?.email}</div>
+            <div className="text-xs mt-0.5 truncate opacity-70">{profile?.name || profile?.email}</div>
           </div>
 
           {/* Menu */}
@@ -77,11 +85,12 @@ export default function AppLayout() {
                   to={item.path}
                   onClick={() => setOpen(false)}
                   data-testid={`menu-${item.path.replace(/\//g, "-") || "home"}`}
-                  className={`relative flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-all duration-200 ${active ? "bg-gradient-to-r from-[#3B82F6] to-[#2563EB] text-white shadow-lg shadow-blue-900/30" : "text-white/75 hover:bg-white/10 hover:text-white"}`}
+                  style={active ? { background: "var(--app-primary)", color: "var(--app-primary-fg)" } : undefined}
+                  className={`relative flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-all duration-200 ${active ? "shadow-lg" : "hover:bg-white/10"}`}
                 >
                   <Icon size={18} weight={active ? "fill" : "regular"} />
                   <span>{item.label}</span>
-                  {active && <span className="absolute right-0 top-0 bottom-0 w-1 bg-white rounded-l-md" />}
+                  {active && <span className="absolute right-0 top-0 bottom-0 w-1 rounded-l-md" style={{ background: "var(--app-primary-fg)" }} />}
                 </Link>
               );
             })}
