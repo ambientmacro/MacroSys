@@ -57,6 +57,7 @@ export default function AppLayout() {
             <Link to="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
               <div className="w-10 h-10 rounded-md flex items-center justify-center" style={{ background: "var(--app-primary)" }}>
                 <Drop size={22} weight="fill" style={{ color: "var(--app-primary-fg)" }} />
+                {/* Substituir pela logo?? pois está personalisável */}
               </div>
               <div>
                 <div className="font-[Outfit,sans-serif] font-black text-lg leading-none tracking-tight">MACRO</div>
