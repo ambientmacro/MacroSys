@@ -200,6 +200,10 @@ export default function GetrakImport() {
       const totalKm = g.lines.reduce((acc, r) => acc + (Number(String(r["Distância (km)"] || "0").replace(",", ".")) || 0), 0);
       const totalMov = g.lines.reduce((acc, r) => acc + parseTime(r["Tempo em movimento"]), 0);
       const totalOcioso = g.lines.reduce((acc, r) => acc + parseTime(r["Tempo ocioso"]), 0);
+      // Duração total = soma da coluna "Duração" da planilha (movimento + ocioso).
+      // Fallback: se a planilha não trouxer, aproxima somando movimento+ocioso.
+      const totalDuracaoExcel = g.lines.reduce((acc, r) => acc + parseTime(r["Duração"]), 0);
+      const totalDuracao = totalDuracaoExcel || (totalMov + totalOcioso);
       const last = g.lines[g.lines.length - 1];
       const first = g.lines[0];
       const latLngFinal = parseLatLng(last?.["Latitude e longitude final"]);
@@ -214,6 +218,7 @@ export default function GetrakImport() {
         totalKm,
         totalMov,
         totalOcioso,
+        totalDuracao,
         linhas: g.lines.length,
         ultimoLocal: last?.["Local final"] || "—",
         ultimoFim: last?.["Hora final"] || "—",
@@ -262,7 +267,7 @@ export default function GetrakImport() {
   }), [cruzamento]);
 
   return (
-    <div className="px-4 sm:px-8 py-8 max-w-7xl mx-auto" data-testid="page-getrak">
+    <div className="px-4 sm:px-8 py-8 max-w-none mx-auto" data-testid="page-getrak">
       <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
         <div>
           <div className="text-[10px] uppercase tracking-[0.25em] text-[#708278] font-bold">Frota · Localização</div>
@@ -285,7 +290,7 @@ export default function GetrakImport() {
           veículos cadastrados — você poderá ver onde cada equipamento estava e
           conferir se o motorista que aparece no checklist está realmente
           operando o veículo. <em>Veículos não cadastrados aparecem em amarelo;
-          motoristas divergentes em vermelho.</em>
+            motoristas divergentes em vermelho.</em>
         </div>
       </div>
 
@@ -348,7 +353,9 @@ export default function GetrakImport() {
                     <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Motorista (GETRAK)</th>
                     <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3 hidden md:table-cell">Último local</th>
                     <th className="text-right text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Distância</th>
-                    <th className="text-right text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3 hidden lg:table-cell">Em movim.</th>
+                    <th className="text-right text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-2 py-3 hidden lg:table-cell">Em movim.</th>
+                    <th className="text-right text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-2 py-3 hidden lg:table-cell">Ocioso</th>
+                    <th className="text-right text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] pl-2 pr-4 py-3 hidden lg:table-cell">Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -394,9 +401,14 @@ export default function GetrakImport() {
                           {c.totalKm.toFixed(1)} km
                           <div className="text-[10px] text-[#708278] font-normal">{c.linhas} eventos</div>
                         </td>
-                        <td className="px-4 py-3 text-right hidden lg:table-cell text-[11px] text-[#4A564F]">
-                          <div className="flex items-center gap-1 justify-end"><Clock size={11} /> {fmtSeconds(c.totalMov)}</div>
-                          <div className="text-[10px] text-[#708278]">Ocioso: {fmtSeconds(c.totalOcioso)}</div>
+                        <td className="px-2 py-3 text-right hidden lg:table-cell text-[11px] text-[#4A564F] whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1"><Clock size={11} /> {fmtSeconds(c.totalMov)}</span>
+                        </td>
+                        <td className="px-2 py-3 text-right hidden lg:table-cell text-[11px] text-[#708278] whitespace-nowrap">
+                          {fmtSeconds(c.totalOcioso)}
+                        </td>
+                        <td className="pl-2 pr-4 py-3 text-right hidden lg:table-cell text-[11px] font-bold text-[#0F2542] whitespace-nowrap">
+                          {fmtSeconds(c.totalDuracao)}
                         </td>
                       </tr>
                     );
@@ -437,9 +449,8 @@ function StatCard({ label, value, color, icon: Icon, testId, active, onClick }) 
       disabled={!clickable}
       data-testid={testId}
       data-active={active ? "true" : "false"}
-      className={`bg-white border rounded-md p-4 flex items-center gap-3 text-left w-full transition-all ${
-        active ? "" : "border-[#E2E8E4] hover:border-[#1E3A5F]/30"
-      } ${clickable ? "cursor-pointer" : "cursor-default"}`}
+      className={`bg-white border rounded-md p-4 flex items-center gap-3 text-left w-full transition-all ${active ? "" : "border-[#E2E8E4] hover:border-[#1E3A5F]/30"
+        } ${clickable ? "cursor-pointer" : "cursor-default"}`}
       style={active ? { borderColor: color, boxShadow: `0 0 0 1px ${color}` } : undefined}
     >
       <div className="w-11 h-11 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}15` }}>
@@ -474,7 +485,7 @@ function EventsModal({ item, onClose }) {
               {item.vehicle && <span className="text-sm font-bold text-[#4A564F]">· {item.vehicle.tag}</span>}
             </h2>
             <div className="text-[11px] text-[#708278] mt-0.5">
-              {lines.length} eventos · {item.totalKm.toFixed(1)} km · Motorista GETRAK: {item.driversReported.join(", ") || "—"}
+              {lines.length} eventos · {item.totalKm.toFixed(1)} km · Em movim.: {fmtSeconds(item.totalMov)} · Ocioso: {fmtSeconds(item.totalOcioso)} · <strong className="text-[#0F2542]">Total: {fmtSeconds(item.totalDuracao)}</strong> · Motorista GETRAK: {item.driversReported.join(", ") || "—"}
             </div>
           </div>
           <button onClick={onClose} className="text-[#708278] hover:text-[#0F1411] p-2 rounded-md hover:bg-[#F5F7FA]" data-testid="getrak-modal-close">
@@ -493,6 +504,8 @@ function EventsModal({ item, onClose }) {
                 <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Motorista</th>
                 <th className="text-right text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Distância</th>
                 <th className="text-right text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Em movim.</th>
+                <th className="text-right text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Ocioso</th>
+                <th className="text-right text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Duração</th>
                 <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Local inicial</th>
                 <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Local final</th>
               </tr>
@@ -511,6 +524,8 @@ function EventsModal({ item, onClose }) {
                       {(Number(String(r["Distância (km)"] || "0").replace(",", ".")) || 0).toFixed(1)} km
                     </td>
                     <td className="px-4 py-3 text-right text-[#4A564F] whitespace-nowrap">{r["Tempo em movimento"] || "—"}</td>
+                    <td className="px-4 py-3 text-right text-[#708278] whitespace-nowrap">{r["Tempo ocioso"] || "—"}</td>
+                    <td className="px-4 py-3 text-right font-bold text-[#0F2542] whitespace-nowrap">{r["Duração"] || "—"}</td>
                     <td className="px-4 py-3 text-[#4A564F] max-w-xs">
                       <div className="text-[11px]">{r["Local inicial"] || "—"}</div>
                       {llIni && (
