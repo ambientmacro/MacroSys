@@ -52,12 +52,12 @@ export default function AppLayout() {
           style={{ background: "var(--app-sidebar-bg)", color: "var(--app-sidebar-fg)" }}
           className={`fixed lg:sticky top-0 left-0 z-40 h-screen w-72 flex flex-col transition-transform duration-200 ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
         >
+          {/* Substituir pela logo?? pois está personalisável */}
           {/* Logo */}
           <div className="px-6 py-7 border-b border-white/10">
             <Link to="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
               <div className="w-10 h-10 rounded-md flex items-center justify-center" style={{ background: "var(--app-primary)" }}>
                 <Drop size={22} weight="fill" style={{ color: "var(--app-primary-fg)" }} />
-                {/* Substituir pela logo?? pois está personalisável */}
               </div>
               <div>
                 <div className="font-[Outfit,sans-serif] font-black text-lg leading-none tracking-tight">MACRO</div>

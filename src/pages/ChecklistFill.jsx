@@ -86,13 +86,27 @@ export default function ChecklistFill({ mode = "digital" }) {
   // Veículos do motorista logado (motorista titular). Suporta tanto a forma
   // nova `motoristasTitularesIds: [...]` quanto a legada `motoristaTitularId`.
   // No modo "manual" (encarregado) usamos a lista completa.
+  //
+  // Importante: o campo `motoristasTitularesIds` guarda IDs do doc `drivers`,
+  // não do doc `users`. Precisamos descobrir o driver.id ligado ao usuário
+  // logado via `driver.userId === profile.id`. Sem isso, motoristas cujo
+  // login foi criado depois do cadastro (Josimar, por exemplo) não achavam
+  // seus veículos — só funcionava para casos legados onde user.id == driver.id.
+  const myDriverIds = useMemo(() => {
+    // Todo motorista logado pode ter 1..N docs `drivers` (histórico), mas
+    // normalmente é 1. Pegamos todos que apontam pra este usuário e também
+    // o próprio profile.id como fallback compatível com registros antigos.
+    const ids = drivers.filter((d) => d.userId === profile.id).map((d) => d.id);
+    return [...ids, profile.id];
+  }, [drivers, profile.id]);
+
   const myVehicles = useMemo(() => {
     if (mode !== "digital") return [];
     return vehicles.filter((v) => {
       const list = Array.isArray(v.motoristasTitularesIds) ? v.motoristasTitularesIds : [];
-      return list.includes(profile.id) || v.motoristaTitularId === profile.id;
+      return myDriverIds.some((id) => list.includes(id) || v.motoristaTitularId === id);
     });
-  }, [vehicles, profile.id, mode]);
+  }, [vehicles, myDriverIds, mode]);
 
   // Auto-seleção do veículo do motorista APENAS quando houver exatamente 1
   // vínculo. Com múltiplos titulares, o motorista escolhe no select.

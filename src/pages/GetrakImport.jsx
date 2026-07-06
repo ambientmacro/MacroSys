@@ -290,7 +290,7 @@ export default function GetrakImport() {
           veículos cadastrados — você poderá ver onde cada equipamento estava e
           conferir se o motorista que aparece no checklist está realmente
           operando o veículo. <em>Veículos não cadastrados aparecem em amarelo;
-            motoristas divergentes em vermelho.</em>
+          motoristas divergentes em vermelho.</em>
         </div>
       </div>
 
@@ -449,8 +449,9 @@ function StatCard({ label, value, color, icon: Icon, testId, active, onClick }) 
       disabled={!clickable}
       data-testid={testId}
       data-active={active ? "true" : "false"}
-      className={`bg-white border rounded-md p-4 flex items-center gap-3 text-left w-full transition-all ${active ? "" : "border-[#E2E8E4] hover:border-[#1E3A5F]/30"
-        } ${clickable ? "cursor-pointer" : "cursor-default"}`}
+      className={`bg-white border rounded-md p-4 flex items-center gap-3 text-left w-full transition-all ${
+        active ? "" : "border-[#E2E8E4] hover:border-[#1E3A5F]/30"
+      } ${clickable ? "cursor-pointer" : "cursor-default"}`}
       style={active ? { borderColor: color, boxShadow: `0 0 0 1px ${color}` } : undefined}
     >
       <div className="w-11 h-11 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}15` }}>
