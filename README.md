@@ -7,7 +7,7 @@ Sistema operacional de gestão de frota, motoristas e checklists construído com
 ### Equipe Contribuinte
 - Arthur
 - Ester
-- Rickhelme
+- Rikhelmy
 - Yuri
 ---
 
@@ -162,10 +162,36 @@ Use o usuário abaixo para entrar e criar os demais usuários em **Menu → Usu�
 
 
 
+# ========== ToDo: 06/07/2026 ==========
+Falata criar os perfil
+ - compras
+  - Verificar os requisitos, cadastrar produtos, redirecinar a 'canteiro de obra'?
+   - entrada no estoque
+
+No móodulo do
+segurança do trabalho falta controlar
+ - EPI
+ - EPC
+ - Uniforme
+ Verificar se só acompanha, ou dá a saída no estoque?
+
+
+Perfil de almoxarife:
+ Ficará interno nos canteiros existe espalhado pela região metropolitana da Grande Vitória.
+
+
+Onde registraremos estoque entrada e saída, relatório de custo e etc...
+
+Lembrando que serão várias equipes e temos 'canteiro de obra' espalhados pela cidade.
+
+
+# ========== ToDo: 06/07/2026 ==========
+
+
+
 # ========== ToDo: 02/07/2026 ==========
 
-- O encarregado pode preencher somente o checklist da equipe dele
-
+- O encarregado pode preencher somente o checklist da equipe dele OK
 
 
 

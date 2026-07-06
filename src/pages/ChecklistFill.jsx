@@ -147,6 +147,8 @@ export default function ChecklistFill({ mode = "digital" }) {
     }
   }, [vehicleId, vehicles, templates]);
 
+
+
   // Quando o template muda (inclusive para vazio), recalcula respostas:
   //   - templateId vazio → answers vazio
   //   - templateId preenchido → answers iniciais do template
@@ -171,7 +173,10 @@ export default function ChecklistFill({ mode = "digital" }) {
   // Mostra select sempre que houver MAIS de um veículo vinculado (motorista
   // titular em vários). Esconde só quando há exatamente 1 (auto-seleção).
   const showVehicleSelect = !isMotoristaApp || myVehicles.length !== 1;
-  const showTemplateSelect = !isMotoristaApp || !resolveTemplateForVehicle(vehicle, templates);
+  const hasAutoTemplate = !!resolveTemplateForVehicle(vehicle, templates);
+
+  // Se o veículo possui um template vinculado, ninguém pode alterá-lo.
+  const showTemplateSelect = !hasAutoTemplate;
 
   // Bloqueio "sem veículo vinculado": motorista app NÃO está em nenhum veículo
   // como titular → não devemos mostrar todos os veículos da empresa para ele
@@ -180,7 +185,55 @@ export default function ChecklistFill({ mode = "digital" }) {
 
   // No app do motorista, o select de veículo lista APENAS os veículos onde
   // ele é titular — nunca a lista completa (que é privilégio do encarregado).
-  const vehiclesForSelect = isMotoristaApp ? myVehicles : vehicles;
+  //
+  // No modo manual (encarregado), aplica-se o recorte por EQUIPE quando
+  // `profile.teamId` está preenchido: o encarregado só vê motoristas e
+  // veículos da equipe dele. Isso restaura a regra "encarregado só preenche
+  // checklist da equipe dele" que estava sem efeito.
+  const encarregadoSemEquipe = profile.role === ROLES.ENCARREGADO && !profile.teamId;
+  const driversForSelect = useMemo(() => {
+    if (isMotoristaApp) return drivers;
+    if (profile.role === ROLES.ENCARREGADO && profile.teamId) {
+      return drivers.filter((d) => d.teamId === profile.teamId);
+    }
+    return drivers;
+  }, [drivers, profile.role, profile.teamId, isMotoristaApp]);
+
+  const vehiclesForSelect = useMemo(() => {
+    if (isMotoristaApp) return myVehicles;
+    // No modo manual, quando o encarregado JÁ escolheu um motorista, o
+    // recorte passa a ser IGUAL ao do perfil motorista: só veículos onde
+    // aquele motorista é titular. O filtro por equipe deixa de valer aqui
+    // (o motorista pode operar um veículo que está temporariamente sem
+    // teamId ou de outra equipe onde ele foi vinculado como titular).
+    if (mode === "manual" && driverId) {
+      return vehicles.filter((v) => {
+        const arr = Array.isArray(v.motoristasTitularesIds) ? v.motoristasTitularesIds : [];
+        return arr.includes(driverId) || v.motoristaTitularId === driverId;
+      });
+    }
+    // Sem motorista selecionado, encarregado vê apenas os veículos da sua
+    // equipe (para não navegar por veículos que ele não gerencia).
+    if (profile.role === ROLES.ENCARREGADO && profile.teamId) {
+      return vehicles.filter((v) => v.teamId === profile.teamId);
+    }
+    return vehicles;
+  }, [vehicles, myVehicles, profile.role, profile.teamId, isMotoristaApp, mode, driverId]);
+
+  // Blindagem: se o `vehicleId` atual NÃO faz parte de `vehiclesForSelect`
+  // (ex.: encarregado trocou o motorista e o veículo antigo não é titular
+  // do novo motorista, ou o novo motorista não tem nenhum veículo), zera
+  // tudo. Sem isso, um vehicleId residual mantinha o template + perguntas
+  // renderizados mesmo com o select mostrando "Selecione um veículo…".
+  useEffect(() => {
+    if (vehicleId && !vehiclesForSelect.some((v) => v.id === vehicleId)) {
+      setVehicleId("");
+      setTemplateId("");
+      setAnswers({});
+      setPhotos({});
+      setObs("");
+    }
+  }, [vehiclesForSelect, vehicleId]);
 
   const onPhoto = (itemId) => (e) => {
     const file = e.target.files?.[0];
@@ -366,11 +419,26 @@ ${window.location.origin}/checklists`;
         {mode === "manual" && (
           <div>
             <label className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#708278] block mb-1.5">Motorista</label>
-            <select data-testid="cl-driver" value={driverId} onChange={(e) => setDriverId(e.target.value)}
+            <select data-testid="cl-driver" value={driverId} onChange={(e) => {
+              setDriverId(e.target.value);
+              // Ao trocar de motorista, limpa toda a seleção derivada para
+              // não ficar um "checklist fantasma" do motorista anterior:
+              // veículo, template automático, respostas, fotos e obs.
+              setVehicleId("");
+              setTemplateId("");
+              setAnswers({});
+              setPhotos({});
+              setObs("");
+            }}
               className="w-full border border-[#E2E8E4] px-4 py-3 rounded-md text-sm focus:outline-none focus:border-[#1E3A5F]">
               <option value="">Selecione…</option>
-              {drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              {driversForSelect.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
+            {encarregadoSemEquipe && (
+              <div className="mt-2 text-[11px] text-[#92400E] bg-[#FEF3C7] border border-[#F59E0B]/40 rounded px-2 py-1.5" data-testid="encarregado-sem-equipe">
+                Você não está vinculado a uma equipe. Peça ao DP/Admin para incluir você em uma equipe para filtrar os motoristas.
+              </div>
+            )}
           </div>
         )}
 
@@ -391,29 +459,44 @@ ${window.location.origin}/checklists`;
           </div>
         )}
 
-        {/* Seleção de template (escondida se vier do veículo) */}
-        {showTemplateSelect && (
+        {/* Seleção de template (escondida se vier do veículo) — apenas
+            quando há veículo selecionado. Sem veículo, nem select nem card
+            do template devem aparecer (evita o "checklist fantasma" quando
+            o motorista escolhido não tem veículo). */}
+        {vehicleId && showTemplateSelect && (
           <div>
             <label className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#708278] block mb-1.5">Template</label>
-            <select data-testid="cl-template" value={templateId} onChange={(e) => setTemplateId(e.target.value)}
-              className="w-full border border-[#E2E8E4] px-4 py-3 rounded-md text-sm focus:outline-none focus:border-[#1E3A5F]"
-              disabled={!vehicleId && isMotoristaApp}>
-              <option value="">Selecione um template…</option>
-              {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            <select
+              data-testid="cl-template"
+              value={templateId}
+              onChange={(e) => setTemplateId(e.target.value)}
+              disabled={!vehicleId || hasAutoTemplate}
+              className="w-full border border-[#E2E8E4] px-4 py-3 rounded-md text-sm focus:outline-none focus:border-[#1E3A5F] disabled:bg-[#F3F4F6] disabled:text-[#6B7280] disabled:cursor-not-allowed"
+            >
             </select>
           </div>
         )}
-
-        {/* Mostra template auto-selecionado (info-only) */}
-        {isMotoristaApp && template && !showTemplateSelect && (
-          <div className="bg-[#EFF3F8] border border-[#2563EB]/30 rounded-md px-4 py-3 text-xs text-[#0F2542] flex items-center gap-2" data-testid="cl-template-auto">
-            <ClipboardText size={14} className="text-[#2563EB]" weight="duotone" />
-            <span>Template: <b>{template.name}</b> · {template.items?.length || 0} itens</span>
+        {/* Template auto-selecionado (somente leitura) */}
+        {template && vehicleId && !showTemplateSelect && (
+          <div
+            className="bg-[#EFF3F8] border border-[#2563EB]/30 rounded-md px-4 py-3 text-xs text-[#0F2542] flex items-center gap-2 select-none pointer-events-none cursor-default"
+            data-testid="cl-template-auto"
+            aria-readonly="true"
+          >
+            <ClipboardText
+              size={14}
+              className="text-[#2563EB]"
+              weight="duotone"
+            />
+            <span>
+              Template: <b>{template.name}</b> · {template.items?.length || 0} itens
+            </span>
           </div>
         )}
-
-        {/* Itens do checklist */}
-        {template && (
+        {/* Itens do checklist — só renderiza depois que um veículo é escolhido.
+            Sem essa condição, um template "residual" (de uma seleção anterior)
+            deixava o encarregado preencher perguntas sem veículo. */}
+        {template && vehicleId && (
           <div className="border-t border-[#E2E8E4] pt-5 space-y-2">
             {template.items.map((item) => (
               <div key={item.id} className="py-3 border-b border-[#E2E8E4] last:border-0">
