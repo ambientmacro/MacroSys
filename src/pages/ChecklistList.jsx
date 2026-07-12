@@ -30,7 +30,11 @@ export default function ChecklistList() {
     if (profile.role === ROLES.MOTORISTA) {
       q = query(collection(db, "checklists"), where("filledByUserId", "==", profile.id));
     } else {
-      q = query(collection(db, "checklists"), orderBy("updatedAt", "desc"));
+      // Ordenar por `createdAt` — que é o campo realmente gravado no submit
+      // do checklist. `updatedAt` não existe no doc, e Firestore omite quando
+      // ordena por um campo ausente (bug: lista aparecia vazia mesmo com
+      // checklists válidos no painel).
+      q = query(collection(db, "checklists"), orderBy("createdAt", "desc"));
     }
     const unsub = onSnapshot(q, (snap) => {
       let list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -44,7 +48,7 @@ export default function ChecklistList() {
           driverMembers.has(c.driverId)
         );
       }
-      list.sort((a, b) => (b.updatedAt?.toMillis?.() || 0) - (a.updatedAt?.toMillis?.() || 0));
+      list.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
       setItems(list);
     });
     return () => unsub();
@@ -95,29 +99,29 @@ export default function ChecklistList() {
             ? "Vistoria de Entrada"
             : src === "manual" ? "Diário · papel" : "Diário · app";
           return (
-          <Link to={`/checklists/${c.id}`} key={c.id} className="group bg-white border border-[#E2E8E4] rounded-md p-5 flex items-center justify-between hover:border-[#2563EB]/60 hover:shadow-md transition-all" data-testid={`cl-row-${c.id}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-md flex items-center justify-center ${isVistoria ? "bg-[#4A7A8C]/15" : "bg-[#1E3A5F]/15"}`}>
-                <ClipboardText size={18} weight="duotone" className={isVistoria ? "text-[#2E4F5C]" : "text-[#1E3A5F]"} />
-              </div>
-              <div>
-                <div className="text-sm font-bold text-[#0F1411]">{c.templateName || "Checklist"}</div>
-                <div className="text-xs text-[#708278] mt-0.5 flex items-center gap-2 flex-wrap">
-                  <span className="flex items-center gap-1"><Truck size={12} /> {c.vehicleTag || "—"}</span>
-                  <span>·</span>
-                  <span className="flex items-center gap-1"><User size={12} /> {c.driverName || c.filledByName}</span>
-                  <span>·</span>
-                  <span>{c.updatedAt?.toDate?.()?.toLocaleString?.("pt-BR") || ""}</span>
+            <Link to={`/checklists/${c.id}`} key={c.id} className="group bg-white border border-[#E2E8E4] rounded-md p-5 flex items-center justify-between hover:border-[#2563EB]/60 hover:shadow-md transition-all" data-testid={`cl-row-${c.id}`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-md flex items-center justify-center ${isVistoria ? "bg-[#4A7A8C]/15" : "bg-[#1E3A5F]/15"}`}>
+                  <ClipboardText size={18} weight="duotone" className={isVistoria ? "text-[#2E4F5C]" : "text-[#1E3A5F]"} />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-[#0F1411]">{c.templateName || "Checklist"}</div>
+                  <div className="text-xs text-[#708278] mt-0.5 flex items-center gap-2 flex-wrap">
+                    <span className="flex items-center gap-1"><Truck size={12} /> {c.vehicleTag || "—"}</span>
+                    <span>·</span>
+                    <span className="flex items-center gap-1"><User size={12} /> {c.driverName || c.filledByName}</span>
+                    <span>·</span>
+                    <span>{c.createdAt?.toDate?.()?.toLocaleString?.("pt-BR") || c.date || ""}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className={`text-[10px] uppercase tracking-[0.15em] font-bold px-2.5 py-1 rounded-md border ${isVistoria ? "bg-[#4A7A8C]/15 text-[#2E4F5C] border-[#4A7A8C]/40" : "bg-[#1E3A5F]/15 text-[#0A1A2E] border-[#1E3A5F]/40"}`}>
-                {sourceLabel}
-              </span>
-              <CaretRight size={16} className="text-[#708278] group-hover:text-[#2563EB] group-hover:translate-x-0.5 transition-all" />
-            </div>
-          </Link>
+              <div className="flex items-center gap-3">
+                <span className={`text-[10px] uppercase tracking-[0.15em] font-bold px-2.5 py-1 rounded-md border ${isVistoria ? "bg-[#4A7A8C]/15 text-[#2E4F5C] border-[#4A7A8C]/40" : "bg-[#1E3A5F]/15 text-[#0A1A2E] border-[#1E3A5F]/40"}`}>
+                  {sourceLabel}
+                </span>
+                <CaretRight size={16} className="text-[#708278] group-hover:text-[#2563EB] group-hover:translate-x-0.5 transition-all" />
+              </div>
+            </Link>
           );
         })}
       </div>
