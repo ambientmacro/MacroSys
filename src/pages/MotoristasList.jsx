@@ -261,13 +261,21 @@ export default function MotoristasList() {
     if (funcaoFilter) {
       list = list.filter((d) => {
         const func = (d.funcao || "").toLowerCase();
-        if (funcaoFilter === "MOTORISTA") return func.includes("motorista");
-        if (funcaoFilter === "OPERADOR") return func.includes("operador");
-        if (funcaoFilter === "AJUDANTE") return func.includes("ajudante");
-        if (funcaoFilter === "OUTRO") return func && !func.includes("motorista") && !func.includes("operador") && !func.includes("ajudante");
+
+        const isMotorista = func.includes("motorista");
+        const isOperador = !isMotorista && func.includes("operador");
+        const isAjudante = !isMotorista && !isOperador && func.includes("ajudante");
+        const isOutro = func && !isMotorista && !isOperador && !isAjudante;
+
+        if (funcaoFilter === "MOTORISTA") return isMotorista;
+        if (funcaoFilter === "OPERADOR") return isOperador;
+        if (funcaoFilter === "AJUDANTE") return isAjudante;
+        if (funcaoFilter === "OUTRO") return isOutro;
+
         return true;
       });
     }
+
 
     if (teamFilter) {
       list = list.filter((d) => {
