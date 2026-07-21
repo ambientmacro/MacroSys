@@ -156,6 +156,53 @@ export default function BackupAdmin() {
   };
 
   // ─────────── Export ───────────
+  // Excel tem limite de 32.767 caracteres por célula. Como nossos docs
+  // guardam anexos como base64 (contratoBase64, CRLV, CNH, fotos…), essas
+  // colunas explodem o limite. Estratégia para o EXCEL apenas:
+  //   1. Detectamos colunas "bloated" = qualquer valor > 32k chars ou que
+  //      pareça anexo base64 (`data:image/…`, `data:application/…`).
+  //   2. Omitimos essas colunas por completo (nem aparecem no XLSX/CSV).
+  //   3. Firestore Timestamp → string ISO; objetos/arrays → JSON.stringify.
+  //   4. Se ainda assim alguma célula estourar 32k, trunca com marcador.
+  // O JSON permanece INTACTO com o base64 — é o backup fiel para restaurar
+  // fotos/contratos.
+  const MAX_CELL = 32767;
+  const isBase64Anexo = (s) => typeof s === "string" && /^data:(image|application)\//i.test(s);
+
+  const detectBloatedColumns = (rows) => {
+    const bloated = new Set();
+    for (const row of rows) {
+      for (const [k, v] of Object.entries(row)) {
+        if (bloated.has(k)) continue;
+        if (isBase64Anexo(v)) { bloated.add(k); continue; }
+        const s = typeof v === "string" ? v : (v && typeof v === "object" && !(v instanceof Date) && typeof v.toDate !== "function" ? JSON.stringify(v) : "");
+        if (s.length > MAX_CELL) bloated.add(k);
+      }
+    }
+    return bloated;
+  };
+
+  const sanitizeForExcel = (rows) => {
+    const bloated = detectBloatedColumns(rows);
+    return rows.map((row) => {
+      const out = {};
+      for (const [k, v] of Object.entries(row)) {
+        if (bloated.has(k)) continue; // coluna omitida por completo no Excel
+        let cell = v;
+        if (v && typeof v === "object" && !(v instanceof Date)) {
+          if (typeof v.toDate === "function") cell = v.toDate().toISOString();
+          else { try { cell = JSON.stringify(v); } catch { cell = String(v); } }
+        } else if (v instanceof Date) cell = v.toISOString();
+        if (typeof cell === "string" && cell.length > MAX_CELL) {
+          const cut = cell.slice(0, MAX_CELL - 60);
+          cell = `${cut}…[truncated: ${cell.length} chars — use JSON backup]`;
+        }
+        out[k] = cell;
+      }
+      return out;
+    });
+  };
+
   const exportCollection = async (col, format) => {
     setBusyKey(`exp-${col.id}-${format}`, true);
     try {
@@ -168,13 +215,13 @@ export default function BackupAdmin() {
         bytes = new Blob([payload]).size;
         downloadBlob(new Blob([payload], { type: "application/json" }), `${filename}.json`);
       } else if (format === "csv") {
-        const ws = XLSX.utils.json_to_sheet(rows);
+        const ws = XLSX.utils.json_to_sheet(sanitizeForExcel(rows));
         const csv = XLSX.utils.sheet_to_csv(ws);
         bytes = new Blob([csv]).size;
         downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), `${filename}.csv`);
       } else {
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), col.id.slice(0, 30));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sanitizeForExcel(rows)), col.id.slice(0, 30));
         const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
         bytes = buf.byteLength;
         downloadBlob(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `${filename}.xlsx`);
@@ -205,7 +252,7 @@ export default function BackupAdmin() {
       } else {
         const wb = XLSX.utils.book_new();
         for (const [colId, rows] of Object.entries(bundle)) {
-          XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), colId.slice(0, 30));
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sanitizeForExcel(rows)), colId.slice(0, 30));
         }
         const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
         bytes = buf.byteLength;
@@ -444,8 +491,8 @@ export default function BackupAdmin() {
                   <td>{r.byName || "—"}</td>
                   <td>
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-[0.1em] ${r.action === "export" ? "bg-[#10B981]/15 text-[#065F46]" :
-                      r.action === "import" ? "bg-[#2563EB]/15 text-[#1E40AF]" :
-                        "bg-[#DC2626]/15 text-[#991B1B]"
+                        r.action === "import" ? "bg-[#2563EB]/15 text-[#1E40AF]" :
+                          "bg-[#DC2626]/15 text-[#991B1B]"
                       }`}>
                       {r.action === "export" ? <Download size={10} /> : r.action === "import" ? <Upload size={10} /> : <Trash size={10} />}
                       {r.action}
@@ -473,26 +520,6 @@ export default function BackupAdmin() {
     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
   allow update, delete: if false;  // imutável
 }`}
-        </pre>
-        <pre className="whitespace-pre-wrap font-mono text-[10px] leading-relaxed">
-          {`
-Ou
-          
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{coll}/{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null && coll != "audit_backups";
-    }
-    match /audit_backups/{docId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;   // qualquer usuário logado registra
-      allow update, delete: if false;          // imutável
-    }
-  }
-}`
-          }
         </pre>
       </div>
     </div>
