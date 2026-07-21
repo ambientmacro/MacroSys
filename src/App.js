@@ -32,6 +32,7 @@ import GetrakImport from "@/pages/GetrakImport";
 import TemplateRevisao from "@/pages/TemplateRevisao";
 import FrotaCustos from "@/pages/FrotaCustos";
 import ThemeAdmin from "@/pages/ThemeAdmin";
+import BackupAdmin from "@/pages/BackupAdmin";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ROLES } from "@/lib/constants";
 
@@ -153,6 +154,11 @@ function App() {
             {/* Temas por perfil — DP/Admin */}
             <Route path="/temas" element={
               <ProtectedRoute allow={[ROLES.DP, ROLES.ADMIN]}><ThemeAdmin /></ProtectedRoute>
+            } />
+
+            {/* Backup & Restauração — apenas Admin TI */}
+            <Route path="/backup" element={
+              <ProtectedRoute allow={[ROLES.ADMIN]}><BackupAdmin /></ProtectedRoute>
             } />
           </Route>
 

@@ -136,6 +136,7 @@ export const getMenuByRole = (role) => {
       { path: "/vistorias", label: "Vistorias", icon: "ClipboardText" },
       { path: "/users", label: "Usuários", icon: "UserGear" },
       { path: "/temas", label: "Temas por Perfil", icon: "Palette" },
+      { path: "/backup", label: "Backup & Restauração", icon: "Database" },
     ],
   };
 
