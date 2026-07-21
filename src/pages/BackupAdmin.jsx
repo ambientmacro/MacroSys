@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { collection, getDocs, writeBatch, doc, addDoc, serverTimestamp, orderBy, query, limit, onSnapshot } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../contexts/AuthContext";
-import { ROLES } from "../lib/constants";
+import { ROLES, ROLE_LABELS } from "../lib/constants";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import {
@@ -30,13 +30,13 @@ import {
 // no futuro (ex.: storage/uploads), adicionar aqui manualmente.
 const COLLECTIONS = [
   { id: "users", label: "Usuários" },
-  { id: "drivers", label: "Motoristas" },
+  // { id: "drivers", label: "Motoristas" },
   { id: "vehicles", label: "Veículos" },
   { id: "vehicleTypes", label: "Tipos de Veículo" },
   { id: "teams", label: "Equipes" },
   { id: "requerimentos", label: "Requerimentos" },
   { id: "checklists", label: "Checklists" },
-  { id: "checklist_templates", label: "Templates de Checklist" },
+  { id: "checklistTemplates", label: "Templates de Checklist" },
   { id: "funcoes", label: "Funções / Cargos" },
   { id: "theme_config", label: "Temas (por perfil)" },
   { id: "notifications", label: "Notificações" },
@@ -50,6 +50,10 @@ export default function BackupAdmin() {
   const [busy, setBusy] = useState({});          // { [key]: true }
   const [auditLog, setAuditLog] = useState([]);
   const [loadingCounts, setLoadingCounts] = useState(false);
+  // Filtro de Função (role) aplicado APENAS à exportação XLSX da coleção `users`.
+  // O JSON/CSV continuam exportando todos os usuários — o filtro é usado só quando
+  // o TI quer uma planilha segmentada por função (padrão: "todos").
+  const [usersExportRole, setUsersExportRole] = useState("todos");
 
   // Contagem inicial das coleções (só uma leitura, sob demanda).
   const refreshCounts = async () => {
@@ -203,12 +207,19 @@ export default function BackupAdmin() {
     });
   };
 
-  const exportCollection = async (col, format) => {
+  const exportCollection = async (col, format, options = {}) => {
     setBusyKey(`exp-${col.id}-${format}`, true);
     try {
       const snap = await getDocs(collection(db, col.id));
-      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      const filename = `${col.id}_${new Date().toISOString().slice(0, 10)}`;
+      let rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // Filtro por função (role) — só é aplicado à coleção `users` no formato XLSX.
+      // JSON/CSV mantêm todos os registros (backup fiel).
+      let filenameSuffix = "";
+      if (col.id === "users" && format === "xlsx" && options.filterRole && options.filterRole !== "todos") {
+        rows = rows.filter((r) => r.role === options.filterRole);
+        filenameSuffix = `_${options.filterRole}`;
+      }
+      const filename = `${col.id}${filenameSuffix}_${new Date().toISOString().slice(0, 10)}`;
       let bytes = 0;
       if (format === "json") {
         const payload = JSON.stringify(rows, null, 2);
@@ -227,7 +238,14 @@ export default function BackupAdmin() {
         downloadBlob(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `${filename}.xlsx`);
       }
       toast.success(`${col.label}: ${rows.length} registros exportados (${humanBytes(bytes)}).`);
-      registerAudit({ action: "export", collectionId: col.id, count: rows.length, sizeBytes: bytes, format });
+      registerAudit({
+        action: "export",
+        collectionId: col.id,
+        count: rows.length,
+        sizeBytes: bytes,
+        format,
+        notes: filenameSuffix ? `filtro_role=${options.filterRole}` : null,
+      });
     } catch (e) {
       toast.error(`Falha ao exportar ${col.label}: ${e.message}`);
     } finally { setBusyKey(`exp-${col.id}-${format}`, false); }
@@ -432,6 +450,24 @@ export default function BackupAdmin() {
                 <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278]">registros</div>
               </div>
             </div>
+            {c.id === "users" && (
+              <div className="mb-2 flex items-center gap-2 flex-wrap" data-testid="users-export-role-wrap">
+                <label className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278]">
+                  Filtro XLSX · Função:
+                </label>
+                <select
+                  value={usersExportRole}
+                  onChange={(e) => setUsersExportRole(e.target.value)}
+                  data-testid="sel-users-export-role"
+                  className="px-2 py-1 rounded border border-[#E2E8E4] text-xs bg-white text-[#0F2542] focus:outline-none focus:border-[#0F2542]"
+                >
+                  <option value="todos">Todos</option>
+                  {Object.entries(ROLES).map(([, roleId]) => (
+                    <option key={roleId} value={roleId}>{ROLE_LABELS[roleId] || roleId}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="flex flex-wrap gap-1.5">
               <button onClick={() => exportCollection(c, "json")} disabled={busy[`exp-${c.id}-json`]}
                 data-testid={`btn-${c.id}-json`}
@@ -443,7 +479,7 @@ export default function BackupAdmin() {
                 className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.1em] bg-[#4A564F] text-white hover:bg-[#5B6863] disabled:opacity-50">
                 <Download size={11} /> CSV
               </button>
-              <button onClick={() => exportCollection(c, "xlsx")} disabled={busy[`exp-${c.id}-xlsx`]}
+              <button onClick={() => exportCollection(c, "xlsx", c.id === "users" ? { filterRole: usersExportRole } : {})} disabled={busy[`exp-${c.id}-xlsx`]}
                 data-testid={`btn-${c.id}-xlsx`}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.1em] bg-[#10B981] text-white hover:bg-[#059669] disabled:opacity-50">
                 <Download size={11} /> XLSX
@@ -490,10 +526,11 @@ export default function BackupAdmin() {
                   <td className="py-2 whitespace-nowrap">{r.at?.toDate?.().toLocaleString("pt-BR") || "—"}</td>
                   <td>{r.byName || "—"}</td>
                   <td>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-[0.1em] ${r.action === "export" ? "bg-[#10B981]/15 text-[#065F46]" :
-                        r.action === "import" ? "bg-[#2563EB]/15 text-[#1E40AF]" :
-                          "bg-[#DC2626]/15 text-[#991B1B]"
-                      }`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-[0.1em] ${
+                      r.action === "export" ? "bg-[#10B981]/15 text-[#065F46]" :
+                      r.action === "import" ? "bg-[#2563EB]/15 text-[#1E40AF]" :
+                      "bg-[#DC2626]/15 text-[#991B1B]"
+                    }`}>
                       {r.action === "export" ? <Download size={10} /> : r.action === "import" ? <Upload size={10} /> : <Trash size={10} />}
                       {r.action}
                     </span>
@@ -515,7 +552,7 @@ export default function BackupAdmin() {
           <Check size={12} weight="bold" /> Regras Firestore recomendadas
         </div>
         <pre className="whitespace-pre-wrap font-mono text-[10px] leading-relaxed">
-          {`match /audit_backups/{docId} {
+{`match /audit_backups/{docId} {
   allow read, create: if request.auth != null &&
     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
   allow update, delete: if false;  // imutável
