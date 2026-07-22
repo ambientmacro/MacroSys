@@ -5,8 +5,9 @@ import { useAuth } from "../contexts/AuthContext";
 import { ROLES, ROLE_LABELS } from "../lib/constants";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import JSZip from "jszip";
 import {
-  Database, Download, Upload, Trash, FileText, FileXls, ClockCounterClockwise, Warning,
+  Database, Download, Upload, Trash, FileText, FileXls, FileZip, ClockCounterClockwise, Warning,
   ArrowsClockwise, Check,
 } from "@phosphor-icons/react";
 
@@ -54,6 +55,18 @@ export default function BackupAdmin() {
   // O JSON/CSV continuam exportando todos os usuários — o filtro é usado só quando
   // o TI quer uma planilha segmentada por função (padrão: "todos").
   const [usersExportRole, setUsersExportRole] = useState("todos");
+
+  // "Empacotar mídias em ZIP" — por card e para o backup completo.
+  // Quando ligado, o botão XLSX gera um .zip contendo:
+  //   - a planilha (.xlsx)
+  //   - pasta `midias/<colecao>/<docId>/<campo>.<ext>` com os anexos Base64 já
+  //     convertidos para binário (jpg/png/pdf).
+  //   - as células da planilha que originalmente traziam o base64 passam a
+  //     conter o **caminho relativo** para o arquivo dentro do zip.
+  // Padrão: LIGADO (o usuário quase sempre quer o pacote completo).
+  const [zipWithMedia, setZipWithMedia] = useState({}); // { [colId|"__full__"]: bool }
+  const isZipEnabled = (key) => zipWithMedia[key] !== false; // default true
+  const setZipEnabled = (key, v) => setZipWithMedia((prev) => ({ ...prev, [key]: v }));
 
   // Contagem inicial das coleções (só uma leitura, sob demanda).
   const refreshCounts = async () => {
@@ -207,6 +220,65 @@ export default function BackupAdmin() {
     });
   };
 
+  // ─── Extração de mídia (Base64 → arquivo binário no ZIP) ───
+  // A função caminha recursivamente por cada célula/objeto/array; sempre que
+  // encontra um dataURL base64 (`data:image/jpeg;base64,...`), gera um arquivo
+  // dentro do zip em `midias/<col>/<docId>/<path>.<ext>` e substitui o valor
+  // pelo próprio caminho relativo (assim a planilha guarda o link para o zip).
+  const MIME_EXT = {
+    "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png",
+    "image/webp": "webp", "image/gif": "gif",
+    "application/pdf": "pdf",
+  };
+  const extFromDataUrl = (dataUrl) => {
+    const m = String(dataUrl).match(/^data:([^;]+);base64,/i);
+    if (!m) return "bin";
+    return MIME_EXT[m[1].toLowerCase()] || m[1].split("/")[1] || "bin";
+  };
+  const dataUrlToBase64Payload = (dataUrl) => {
+    const idx = dataUrl.indexOf(",");
+    return idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl;
+  };
+  const sanitizePathSegment = (seg) => String(seg).replace(/[^a-zA-Z0-9_.-]/g, "_");
+
+  // Retorna { rowsForExcel, mediaCount } — grava arquivos no `zip` passado.
+  const extractMediaFromRows = (rows, colId, zip) => {
+    let mediaCount = 0;
+    const walk = (value, docId, pathPrefix) => {
+      if (isBase64Anexo(value)) {
+        const ext = extFromDataUrl(value);
+        const safePath = pathPrefix ? sanitizePathSegment(pathPrefix) : "anexo";
+        const relPath = `midias/${colId}/${docId}/${safePath}.${ext}`;
+        try {
+          zip.file(relPath, dataUrlToBase64Payload(value), { base64: true });
+          mediaCount += 1;
+        } catch (e) {
+          console.error("Falha ao inserir mídia no zip:", relPath, e);
+        }
+        return relPath;
+      }
+      if (Array.isArray(value)) {
+        return value.map((v, i) => walk(v, docId, pathPrefix ? `${pathPrefix}.${i}` : String(i)));
+      }
+      if (value && typeof value === "object" && !(value instanceof Date) && typeof value.toDate !== "function") {
+        const out = {};
+        for (const [k, v] of Object.entries(value)) {
+          out[k] = walk(v, docId, pathPrefix ? `${pathPrefix}.${k}` : k);
+        }
+        return out;
+      }
+      return value;
+    };
+    const rowsForExcel = rows.map((row) => {
+      const docId = row.id || (crypto?.randomUUID?.() ?? `noid_${Math.random().toString(36).slice(2, 10)}`);
+      const walked = walk(row, docId, "");
+      // Garante que a coluna `id` fica visível mesmo se o doc não tinha id original.
+      if (!walked.id) walked.id = docId;
+      return walked;
+    });
+    return { rowsForExcel, mediaCount };
+  };
+
   const exportCollection = async (col, format, options = {}) => {
     setBusyKey(`exp-${col.id}-${format}`, true);
     try {
@@ -221,6 +293,8 @@ export default function BackupAdmin() {
       }
       const filename = `${col.id}${filenameSuffix}_${new Date().toISOString().slice(0, 10)}`;
       let bytes = 0;
+      let mediaCount = 0;
+      const wrapZip = format === "xlsx" && options.zipMedia === true;
       if (format === "json") {
         const payload = JSON.stringify(rows, null, 2);
         bytes = new Blob([payload]).size;
@@ -230,6 +304,19 @@ export default function BackupAdmin() {
         const csv = XLSX.utils.sheet_to_csv(ws);
         bytes = new Blob([csv]).size;
         downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), `${filename}.csv`);
+      } else if (wrapZip) {
+        // XLSX + mídias em ZIP: cria uma cópia dos rows onde os base64 já viram
+        // caminho relativo dentro do zip. A planilha guarda o link, não o base64.
+        const zip = new JSZip();
+        const { rowsForExcel, mediaCount: mc } = extractMediaFromRows(rows, col.id, zip);
+        mediaCount = mc;
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sanitizeForExcel(rowsForExcel)), col.id.slice(0, 30));
+        const xlsxBuf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+        zip.file(`${filename}.xlsx`, xlsxBuf);
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        bytes = zipBlob.size;
+        downloadBlob(zipBlob, `${filename}.zip`);
       } else {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sanitizeForExcel(rows)), col.id.slice(0, 30));
@@ -237,14 +324,19 @@ export default function BackupAdmin() {
         bytes = buf.byteLength;
         downloadBlob(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `${filename}.xlsx`);
       }
-      toast.success(`${col.label}: ${rows.length} registros exportados (${humanBytes(bytes)}).`);
+      toast.success(
+        `${col.label}: ${rows.length} registros exportados${mediaCount ? ` + ${mediaCount} mídias` : ""} (${humanBytes(bytes)}).`
+      );
       registerAudit({
         action: "export",
         collectionId: col.id,
         count: rows.length,
         sizeBytes: bytes,
-        format,
-        notes: filenameSuffix ? `filtro_role=${options.filterRole}` : null,
+        format: wrapZip ? "xlsx+zip" : format,
+        notes: [
+          filenameSuffix ? `filtro_role=${options.filterRole}` : null,
+          mediaCount ? `midias=${mediaCount}` : null,
+        ].filter(Boolean).join("; ") || null,
       });
     } catch (e) {
       toast.error(`Falha ao exportar ${col.label}: ${e.message}`);
@@ -252,7 +344,10 @@ export default function BackupAdmin() {
   };
 
   // Backup completo em UM único .xlsx (uma aba por coleção) e um .json.
-  const exportFull = async (format) => {
+  // Se `zipMedia` estiver ligado, o XLSX é embrulhado num .zip que também
+  // carrega todos os anexos (base64) convertidos em arquivos binários, com
+  // as células apontando para o caminho relativo.
+  const exportFull = async (format, options = {}) => {
     setBusyKey(`exp-full-${format}`, true);
     try {
       const bundle = {}; let total = 0;
@@ -263,10 +358,25 @@ export default function BackupAdmin() {
       }
       const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
       let bytes = 0;
+      let mediaCount = 0;
+      const wrapZip = format === "xlsx" && options.zipMedia === true;
       if (format === "json") {
         const payload = JSON.stringify(bundle, null, 2);
         bytes = new Blob([payload]).size;
         downloadBlob(new Blob([payload], { type: "application/json" }), `macro-backup_${stamp}.json`);
+      } else if (wrapZip) {
+        const zip = new JSZip();
+        const wb = XLSX.utils.book_new();
+        for (const [colId, rows] of Object.entries(bundle)) {
+          const { rowsForExcel, mediaCount: mc } = extractMediaFromRows(rows, colId, zip);
+          mediaCount += mc;
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sanitizeForExcel(rowsForExcel)), colId.slice(0, 30));
+        }
+        const xlsxBuf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+        zip.file(`macro-backup_${stamp}.xlsx`, xlsxBuf);
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        bytes = zipBlob.size;
+        downloadBlob(zipBlob, `macro-backup_${stamp}.zip`);
       } else {
         const wb = XLSX.utils.book_new();
         for (const [colId, rows] of Object.entries(bundle)) {
@@ -276,8 +386,17 @@ export default function BackupAdmin() {
         bytes = buf.byteLength;
         downloadBlob(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `macro-backup_${stamp}.xlsx`);
       }
-      toast.success(`Backup completo: ${total} registros em ${COLLECTIONS.length} coleções (${humanBytes(bytes)}).`);
-      registerAudit({ action: "export", collectionId: null, count: total, sizeBytes: bytes, format, notes: "backup_completo" });
+      toast.success(
+        `Backup completo: ${total} registros em ${COLLECTIONS.length} coleções${mediaCount ? ` + ${mediaCount} mídias` : ""} (${humanBytes(bytes)}).`
+      );
+      registerAudit({
+        action: "export",
+        collectionId: null,
+        count: total,
+        sizeBytes: bytes,
+        format: wrapZip ? "xlsx+zip" : format,
+        notes: `backup_completo${mediaCount ? `; midias=${mediaCount}` : ""}`,
+      });
     } catch (e) {
       toast.error("Falha no backup completo: " + e.message);
     } finally { setBusyKey(`exp-full-${format}`, false); }
@@ -408,16 +527,31 @@ export default function BackupAdmin() {
       <div className="bg-white border border-[#E2E8E4] rounded-md p-5 mb-6" data-testid="card-backup-full">
         <h3 className="font-[Outfit,sans-serif] text-lg font-black text-[#0F1411] mb-1">Backup completo</h3>
         <p className="text-xs text-[#708278] mb-3">Um único arquivo contendo todas as {COLLECTIONS.length} coleções.</p>
+        <label className="inline-flex items-center gap-2 mb-3 cursor-pointer select-none" data-testid="chk-full-zip-wrap">
+          <input
+            type="checkbox"
+            checked={isZipEnabled("__full__")}
+            onChange={(e) => setZipEnabled("__full__", e.target.checked)}
+            data-testid="chk-full-zip"
+            className="w-4 h-4 accent-[#10B981]"
+          />
+          <span className="text-xs font-bold text-[#0F2542]">
+            Empacotar mídias em <span className="uppercase tracking-[0.1em]">.zip</span> junto com o Excel
+          </span>
+          <span className="text-[10px] text-[#708278]">(fotos, CRLV, CNH e contratos como arquivos separados; planilha guarda o caminho relativo)</span>
+        </label>
         <div className="flex flex-wrap gap-2">
           <button onClick={() => exportFull("json")} disabled={busy["exp-full-json"]}
             data-testid="btn-full-json"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-[0.15em] bg-[#0F2542] text-white hover:bg-[#1E3A5F] disabled:opacity-50">
             <FileText size={14} weight="bold" /> JSON
           </button>
-          <button onClick={() => exportFull("xlsx")} disabled={busy["exp-full-xlsx"]}
+          <button onClick={() => exportFull("xlsx", { zipMedia: isZipEnabled("__full__") })} disabled={busy["exp-full-xlsx"]}
             data-testid="btn-full-xlsx"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-[0.15em] bg-[#10B981] text-white hover:bg-[#059669] disabled:opacity-50">
-            <FileXls size={14} weight="bold" /> Excel (multi-abas)
+            {isZipEnabled("__full__")
+              ? <><FileZip size={14} weight="bold" /> Excel + Mídias (.zip)</>
+              : <><FileXls size={14} weight="bold" /> Excel (multi-abas)</>}
           </button>
           <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-[0.15em] bg-[#2563EB] text-white hover:bg-[#1D4ED8] cursor-pointer disabled:opacity-50">
             <Upload size={14} weight="bold" /> Importar backup (JSON)
@@ -468,6 +602,18 @@ export default function BackupAdmin() {
                 </select>
               </div>
             )}
+            <label className="mb-2 inline-flex items-center gap-2 cursor-pointer select-none" data-testid={`chk-${c.id}-zip-wrap`}>
+              <input
+                type="checkbox"
+                checked={isZipEnabled(c.id)}
+                onChange={(e) => setZipEnabled(c.id, e.target.checked)}
+                data-testid={`chk-${c.id}-zip`}
+                className="w-3.5 h-3.5 accent-[#10B981]"
+              />
+              <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#0F2542]">
+                Empacotar mídias em .zip
+              </span>
+            </label>
             <div className="flex flex-wrap gap-1.5">
               <button onClick={() => exportCollection(c, "json")} disabled={busy[`exp-${c.id}-json`]}
                 data-testid={`btn-${c.id}-json`}
@@ -479,10 +625,17 @@ export default function BackupAdmin() {
                 className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.1em] bg-[#4A564F] text-white hover:bg-[#5B6863] disabled:opacity-50">
                 <Download size={11} /> CSV
               </button>
-              <button onClick={() => exportCollection(c, "xlsx", c.id === "users" ? { filterRole: usersExportRole } : {})} disabled={busy[`exp-${c.id}-xlsx`]}
+              <button
+                onClick={() => exportCollection(c, "xlsx", {
+                  ...(c.id === "users" ? { filterRole: usersExportRole } : {}),
+                  zipMedia: isZipEnabled(c.id),
+                })}
+                disabled={busy[`exp-${c.id}-xlsx`]}
                 data-testid={`btn-${c.id}-xlsx`}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.1em] bg-[#10B981] text-white hover:bg-[#059669] disabled:opacity-50">
-                <Download size={11} /> XLSX
+                {isZipEnabled(c.id)
+                  ? <><FileZip size={11} weight="bold" /> XLSX+ZIP</>
+                  : <><Download size={11} /> XLSX</>}
               </button>
               <label className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.1em] bg-white border border-[#0F2542] text-[#0F2542] cursor-pointer hover:bg-[#F5F7FA]">
                 <Upload size={11} /> Importar JSON
@@ -526,11 +679,10 @@ export default function BackupAdmin() {
                   <td className="py-2 whitespace-nowrap">{r.at?.toDate?.().toLocaleString("pt-BR") || "—"}</td>
                   <td>{r.byName || "—"}</td>
                   <td>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-[0.1em] ${
-                      r.action === "export" ? "bg-[#10B981]/15 text-[#065F46]" :
-                      r.action === "import" ? "bg-[#2563EB]/15 text-[#1E40AF]" :
-                      "bg-[#DC2626]/15 text-[#991B1B]"
-                    }`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-[0.1em] ${r.action === "export" ? "bg-[#10B981]/15 text-[#065F46]" :
+                        r.action === "import" ? "bg-[#2563EB]/15 text-[#1E40AF]" :
+                          "bg-[#DC2626]/15 text-[#991B1B]"
+                      }`}>
                       {r.action === "export" ? <Download size={10} /> : r.action === "import" ? <Upload size={10} /> : <Trash size={10} />}
                       {r.action}
                     </span>
@@ -552,7 +704,7 @@ export default function BackupAdmin() {
           <Check size={12} weight="bold" /> Regras Firestore recomendadas
         </div>
         <pre className="whitespace-pre-wrap font-mono text-[10px] leading-relaxed">
-{`match /audit_backups/{docId} {
+          {`match /audit_backups/{docId} {
   allow read, create: if request.auth != null &&
     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
   allow update, delete: if false;  // imutável
