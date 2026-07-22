@@ -67,6 +67,31 @@ npm install
 > ```
 > Isso é seguro nesse projeto.
 
+
+
+
+<!-- Arquivo de regra do firestore !!!
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{coll}/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null && coll != "audit_backups";
+    }
+    match /audit_backups/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;   // qualquer usuário logado registra
+      allow update, delete: if false;          // imutável
+    }
+  }
+}
+ -->
+
+
+
+
+
+
 ### 5️⃣ Confira o arquivo `.env`
 
 O `.env` deve estar na raiz da pasta `frontend/` com este conteúdo:
@@ -164,7 +189,7 @@ Use o usuário abaixo para entrar e criar os demais usuários em **Menu → Usu�
 
 # ========== ToDo: 06/07/2026 ==========
 Falata criar os perfil
- - compras
+ - compras /suprimentos compras
   - Verificar os requisitos, cadastrar produtos, redirecinar a 'canteiro de obra'?
    - entrada no estoque
 
@@ -185,9 +210,8 @@ Onde registraremos estoque entrada e saída, relatório de custo e etc...
 Lembrando que serão várias equipes e temos 'canteiro de obra' espalhados pela cidade.
 
 
+
 # ========== ToDo: 06/07/2026 ==========
-
-
 
 # ========== ToDo: 02/07/2026 ==========
 
