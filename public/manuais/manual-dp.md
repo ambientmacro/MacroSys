@@ -1,113 +1,60 @@
-# Manual do Departamento Pessoal (DP) — MACRO AMBIENTAL
+# Manual do Departamento Pessoal (DP) â€” MACRO AMBIENTAL
 
-> Guia rápido para o DP, que é **coadministrador** do sistema.
-
----
-
-## Visão geral do seu papel
-
-O DP é o **primeiro gargalo** do fluxo de entrada. Sem você, ninguém entra no sistema.
-
-Suas responsabilidades:
-
-1. **Aprovar/reprovar Requerimentos** de motoristas e veículos.
-2. **Gerenciar Equipes** (encarregado + motoristas).
-3. **Criar login** para motoristas aprovados (entregar o acesso ao sistema).
-4. **Editar dados** de qualquer usuário (nome, telefone, função).
-5. **Ativar/desativar** o acesso de qualquer usuário ao sistema.
-
-Você tem acesso completo a `/users`, igual ao Administrador TI.
+> VersÃ£o Fev/2026 Â· 1 pÃ¡gina Â· foco em aprovar pessoas e organizar equipes.
 
 ---
 
-## 1. Analisar Requerimentos
+## O que vocÃª faz no sistema
 
-Menu **"Requerimentos"**.
-
-Para cada requerimento pendente:
-
-1. Toque para abrir o detalhe.
-2. Confira documentos, contratos, ASO, CNH, dados pessoais, observações.
-3. Para **motorista**:
-   - **Aprovar** ? marca o motorista como `Aprovado · sem login` e gera o campo `approvedAt` (prova de aprovação).
-   - **Reprovar** ? motorista entra como inativo.
-4. Para **veículo**:
-   - **Aprovar** ? vai para a fila da Segurança do Trabalho (que vincula template e faz a vistoria do fluxo).
-   - **Reprovar** ? veículo descartado.
-5. Para **veículo + motorista** (combinado):
-   - Mesmo fluxo do veículo. Quando a vistoria da Segurança for aprovada, o motorista também é ativado.
-
-> **A aprovação é o que destrava tudo.** Sem `approvedAt`, o motorista nunca aparece em checklists nem como titular de veículo.
+- **Primeiro gargalo** do fluxo de Requerimento (aprova motoristas e veÃ­culos).
+- Estrutura as **Equipes** (encarregado + motoristas + veÃ­culos).
+- Cria/edita/desativa usuÃ¡rios (coadministrador do sistema).
+- Configura os **Temas visuais** por perfil.
 
 ---
 
-## 2. Estruturar Equipes
+## Suas telas
 
-Menu **"Equipes"**.
+### ðŸ“¥ Requerimentos (`/requerimentos`)
+Lista com status Pendente / Em AnÃ¡lise / Aprovado etc. Aberta a ficha:
+- **Motorista**: confere ASO, CNH, contrato. **Aprova** â†’ vira `NO_LOGIN_USER`; ou **Reprova**.
+- **VeÃ­culo**: **Aprova** â†’ vai para SeguranÃ§a.
+- **VeÃ­culo + Motorista**: aprova â†’ segue para SeguranÃ§a; motorista ativa quando a vistoria aprovar.
 
-1. **"Nova Equipe"** — nomeie (ex.: *Equipe Asfalto*, *Equipe Drenagem*).
-2. **Selecione o encarregado responsável** (líder da equipe).
-3. **Marque os membros** em dois blocos:
-   - **Motoristas com login** (usuários cadastrados no sistema)
-   - **Motoristas pré-cadastrados sem login** (vindos do Requerimento, antes de receberem acesso)
-4. **Salvar** — o sistema propaga o `teamId` automaticamente para todos os membros e para o líder.
+### ðŸ‘¥ Equipes (`/teams`)
+Nova Equipe â†’ define nome, encarregado responsÃ¡vel, motoristas membros (blocos "com login" e "aprovados sem login"). Ao salvar, o `teamId` propaga.
 
-A partir disso:
-- O **Encarregado** dessa equipe vê só os motoristas/veículos/checklists dela.
-- O **Adm de Frota** também filtra pelas suas equipes nos relatórios.
+> A partir daqui, o Encarregado sÃ³ vÃª a prÃ³pria equipe.
 
-> **Edite a equipe sempre que alguém entrar ou sair.** O `teamId` é atualizado em cascata.
+### ðŸ‘¤ UsuÃ¡rios (`/users`)
+Acesso total: criar do zero (qualquer perfil), editar dados, ativar/desativar, criar login para motoristas aprovados (E-mail ou MatrÃ­cula 7 dÃ­gitos).
 
----
+### ðŸŽ¨ Temas (`/temas`)
+Configura cores da Sidebar e backgrounds **por perfil de acesso**. O que vocÃª definir para Motorista, por exemplo, serÃ¡ aplicado quando qualquer Motorista logar.
 
-## 3. Criar login para motorista aprovado
-
-Menu **"Criar Login Motorista"** (ou `/users`).
-
-**Bloco "Aprovados pelo DP · sem login"** — motoristas prontos para receber acesso.
-
-Clique em **"Criar login"**:
-
-- **Tab E-mail** ? quem usa: motoristas administrativos. Reset de senha pelo Firebase.
-- **Tab Matrícula** ? quem usa: motoristas operacionais com matrícula da empresa (7 dígitos). Reset interno (você cria novo login).
-
-Defina uma senha inicial e **entregue para o motorista**.
+### ðŸ“„ Contrato (auto-gerado)
+Ao aprovar Motorista com Contrato, o DP pode gerar um Word/PDF com todos os dados do Requerimento e assinaturas.
 
 ---
 
-## 4. Editar / Ativar / Desativar usuários
+## Regras que vocÃª precisa saber
 
-Menu **"Usuários do Sistema"** (ou `/users`).
-
-Você vê **todos os usuários** (motoristas, encarregados, frota, segurança, admin).
-
-Para cada usuário:
-
-- **Editar** (botão lápis): altera nome, telefone, função. O e-mail/login Firebase não muda.
-- **Mudar perfil** (select): altera o role do usuário (ex.: promover motorista a encarregado).
-- **Aprovar** (botão verde): aparece em usuários pendentes.
-- **Desativar / Reativar** (botão vermelho/verde): bloqueia ou libera o acesso ao sistema.
-  - Quando desativado, ao tentar logar, o usuário recebe: *"Acesso desativado. Procure o Departamento Pessoal."*
-  - O registro fica preservado — só o acesso é bloqueado.
-
----
-
-## 5. Bloco "Motoristas com login ativo"
-
-Mostra todos os motoristas que já receberam acesso, com seu identificador (e-mail ou matrícula). Útil para conferência rápida.
-
----
-
-## 6. Quem é quem
-
-| Situação | Quem procurar |
+| Regra | Por quÃª |
 |---|---|
-| Veículo aprovado mas não tem template | Segurança do Trabalho |
-| Veículo aprovado mas não está em uso | Administrador de Frota (precisa configurar e fazer Vistoria de Entrada) |
-| Motorista desativou por engano | Você mesmo — clique em **"Reativar"** |
-| Encarregado pedindo motorista que não aparece | Verificar se foi incluído na equipe dele (`/teams`) |
-| Erros no sistema | Administrador TI |
+| Sem **cadastro direto** de motorista/veÃ­culo â€” sempre via Requerimento. | Trilha auditÃ¡vel. |
+| Anexo de contrato **obrigatÃ³rio** ao aprovar motorista. | FormalizaÃ§Ã£o legal. |
+| Contratos precisam de **revisÃ£o anual** (a definir alerta). | Compliance. |
+| SÃ³ vocÃª (e Admin) pode editar dados crÃ­ticos do usuÃ¡rio. | Sensibilidade dos dados pessoais. |
 
 ---
 
-**Bom trabalho e boa gestão de acessos!**
+## FAQ rÃ¡pido
+
+**Motorista aprovado nÃ£o aparece no checklist.**
+Confirme se ele jÃ¡ foi vinculado a alguma **Equipe** (`/teams`) e se o Encarregado o vinculou a um veÃ­culo.
+
+**Preciso ver histÃ³rico de aprovaÃ§Ãµes.**
+PeÃ§a ao TI para exportar a coleÃ§Ã£o `requerimentos` no BackupAdmin â€” filtro por status.
+
+**Como redefino senha de motorista?**
+Se for e-mail â†’ link "Esqueci senha" no Firebase. Se for matrÃ­cula â†’ o Encarregado/DP cria novo login com nova senha.

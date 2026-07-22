@@ -679,10 +679,11 @@ export default function BackupAdmin() {
                   <td className="py-2 whitespace-nowrap">{r.at?.toDate?.().toLocaleString("pt-BR") || "—"}</td>
                   <td>{r.byName || "—"}</td>
                   <td>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-[0.1em] ${r.action === "export" ? "bg-[#10B981]/15 text-[#065F46]" :
-                        r.action === "import" ? "bg-[#2563EB]/15 text-[#1E40AF]" :
-                          "bg-[#DC2626]/15 text-[#991B1B]"
-                      }`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-[0.1em] ${
+                      r.action === "export" ? "bg-[#10B981]/15 text-[#065F46]" :
+                      r.action === "import" ? "bg-[#2563EB]/15 text-[#1E40AF]" :
+                      "bg-[#DC2626]/15 text-[#991B1B]"
+                    }`}>
                       {r.action === "export" ? <Download size={10} /> : r.action === "import" ? <Upload size={10} /> : <Trash size={10} />}
                       {r.action}
                     </span>
@@ -704,7 +705,7 @@ export default function BackupAdmin() {
           <Check size={12} weight="bold" /> Regras Firestore recomendadas
         </div>
         <pre className="whitespace-pre-wrap font-mono text-[10px] leading-relaxed">
-          {`match /audit_backups/{docId} {
+{`match /audit_backups/{docId} {
   allow read, create: if request.auth != null &&
     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
   allow update, delete: if false;  // imutável

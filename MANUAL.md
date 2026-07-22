@@ -1,8 +1,10 @@
-# Manual de Uso — Sistema MACRO AMBIENTAL
+# Manual Completo — Sistema MACRO AMBIENTAL
 
-> **Plataforma de gestão de frota, motoristas, checklists e vistorias.**
-> Documento de apresentação para usuários finais e equipe interna.
-> Versão Fev/2026.
+> **Plataforma web responsiva de gestão operacional de frota, motoristas, checklists, vistorias e requerimentos.**
+> Documento único, detalhado, com telas + FAQ. Versão **Fev/2026**.
+>
+> Se você é usuário de um perfil específico, também temos manuais enxutos (1 página):
+> `manual-motorista.md` · `manual-encarregado.md` · `manual-frota.md` · `manual-dp.md` · `manual-seguranca.md` · `manual-admin.md` · `manual-medicao.md` · `manual-performance.md`.
 
 ---
 
@@ -10,511 +12,464 @@
 
 1. [O que é o sistema](#1-o-que-é-o-sistema)
 2. [Perfis e responsabilidades](#2-perfis-e-responsabilidades)
-3. [Como entrar no sistema (login)](#3-como-entrar-no-sistema-login)
-4. [Regras de negócio inegociáveis](#4-regras-de-negócio-inegociáveis)
-5. [Guia por perfil](#5-guia-por-perfil)
-   - [5.1 Administrador TI](#51-administrador-ti)
-   - [5.2 Departamento Pessoal (DP)](#52-departamento-pessoal-dp)
-   - [5.3 Encarregado](#53-encarregado)
-   - [5.4 Administrador de Frota](#54-administrador-de-frota)
+3. [Como entrar (login)](#3-como-entrar-login)
+4. [Regras inegociáveis](#4-regras-inegociáveis)
+5. [Guia por perfil (detalhado)](#5-guia-por-perfil-detalhado)
+   - [5.1 Motorista](#51-motorista)
+   - [5.2 Encarregado](#52-encarregado)
+   - [5.3 Administrador de Frota](#53-administrador-de-frota)
+   - [5.4 Departamento Pessoal (DP)](#54-departamento-pessoal-dp)
    - [5.5 Segurança do Trabalho](#55-segurança-do-trabalho)
-   - [5.6 Motorista](#56-motorista)
-6. [Cenário integrado — operação completa de ponta a ponta](#6-cenário-integrado--operação-completa-de-ponta-a-ponta)
-7. [Glossário](#7-glossário)
-8. [FAQ — Perguntas frequentes](#8-faq--perguntas-frequentes)
+   - [5.6 Medição](#56-medição)
+   - [5.7 Performance](#57-performance)
+   - [5.8 Administrador TI](#58-administrador-ti)
+6. [Módulos transversais](#6-módulos-transversais)
+   - [6.1 Wizard de Requerimento (7 etapas)](#61-wizard-de-requerimento-7-etapas)
+   - [6.2 Importação GETRAK](#62-importação-getrak)
+   - [6.3 Painel de Checklists](#63-painel-de-checklists)
+   - [6.4 Temas por perfil](#64-temas-por-perfil)
+   - [6.5 Backup & Restauração](#65-backup--restauração)
+7. [Cenário integrado ponta-a-ponta](#7-cenário-integrado-ponta-a-ponta)
+8. [Glossário](#8-glossário)
+9. [FAQ geral](#9-faq-geral)
+10. [Hierarquia de aprovações](#10-hierarquia-de-aprovações)
 
 ---
 
 ## 1. O que é o sistema
 
-**MACRO AMBIENTAL** é um sistema para gerir a entrada, autorização e operação diária de **veículos e motoristas** numa empresa de obras/saneamento.
-
-Diferente de cadastros tradicionais "qualquer um inclui qualquer coisa", aqui **toda inclusão passa por um fluxo controlado**:
+**MACRO AMBIENTAL** é um sistema para gerir a entrada, autorização e operação diária de **veículos e motoristas** numa empresa de obras/saneamento. Toda inclusão passa por um fluxo controlado:
 
 ```
-Requerimento → DP analisa → Segurança define checklist → Frota recebe e opera
+Indicação → Requerimento → DP → Segurança → Vistoria → Veículo Ativo
 ```
 
-O sistema garante que:
+### Princípio inviolável
+**Não existe cadastro direto** de motorista/veículo — sempre via Requerimento.
 
-- Motoristas só operam após autorização formal do DP.
-- Veículos só ficam ativos após Vistoria de Entrada feita pela Frota.
-- Cada equipamento tem um template de checklist único (Retroescavadeira, Caminhão, Carro Leve, etc.).
-- O Encarregado vê apenas a sua equipe.
-- O Administrador de Frota acompanha custos, idade da frota, vencimentos de CRLV e patrimônio.
-- O Motorista preenche checklist diário pelo celular, simples e direto.
+Exceções administrativas (documentadas): TI/DP/Encarregado podem criar login para motorista **já aprovado** pelo DP; TI pode criar usuário do zero.
 
 ---
 
 ## 2. Perfis e responsabilidades
 
-| Perfil | O que ele faz no sistema | Telas principais |
+| Perfil | O que faz | Telas principais |
 |---|---|---|
-| **Administrador TI** | Cria/edita/desativa qualquer usuário; configura ambientes; resolve casos especiais. | `/users` (acesso completo), `/templates`, `/teams` |
-| **Departamento Pessoal (DP)** | Autoriza motoristas e veículos no fluxo de Requerimento; gerencia equipes (encarregado + motoristas); cria login para motoristas aprovados; desativa acessos. | `/requerimentos`, `/teams`, `/users` |
-| **Encarregado** | Abre Requerimentos; acompanha checklists da sua equipe; cria login para motoristas da sua equipe; lança checklist quando o motorista responde no papel. | `/requerimentos/novo`, `/checklists` (filtrado pela equipe), `/checklist/manual`, `/users` |
-| **Administrador de Frota** | Aprova requerimentos de veículos; define o template padrão do equipamento; vincula motorista titular; lança a Vistoria de Entrada do veículo; consulta os relatórios de patrimônio e custo. | `/veiculos`, `/frota/relatorios`, `/checklist/manual` (1ª execução) |
-| **Segurança do Trabalho** | Cria/edita os templates de checklist (1 por tipo de equipamento); aprova/reprova vistorias do fluxo de requerimento. | `/templates`, `/vistorias` |
-| **Motorista** | Faz o checklist diário pelo celular antes de iniciar a operação; consulta seu histórico; imprime/salva PDF. | `/checklist/digital`, `/checklists` (somente os seus) |
+| **Motorista** | Preenche checklist digital diário. | `/checklist/digital`, `/checklists` |
+| **Encarregado** | Abre **Indicações**, acompanha checklists da equipe, lança manual, cria login de motorista da equipe. | `/indicacoes`, `/checklists`, `/checklist/manual`, `/users` |
+| **Admin Frota** | Converte Indicação em Requerimento, configura veículos, lança **Vistoria de Entrada**, importa GETRAK, consulta relatórios. | `/requerimentos/novo`, `/veiculos`, `/checklist/manual`, `/getrak`, `/frota/*` |
+| **DP** | Primeiro gargalo — aprova/reprova Requerimentos, gerencia Equipes e Usuários, configura Temas. | `/requerimentos`, `/teams`, `/users`, `/temas` |
+| **Segurança do Trabalho** | Cria templates de checklist, aprova vistoria do fluxo, revisa templates semestralmente. | `/templates`, `/vistorias`, `/templates/revisao` |
+| **Medição** | Catálogo de **Tipos de Veículo** com valores mensais/extra + histórico de preços. | `/tipos-veiculo`, `/frota/custos` |
+| **Performance** | Catálogo de **Funções/Cargos** + estrutura organizacional de Equipes. | `/funcoes`, `/teams` |
+| **Admin TI** | Superusuário — cria/edita qualquer usuário, faz **Backup & Restauração**, resolve ambiente Firebase. | `/users`, `/backup`, `/temas`, tudo mais |
 
 ---
 
-## 3. Como entrar no sistema (login)
+## 3. Como entrar (login)
 
-A tela de login aceita **dois formatos no mesmo campo**:
+A tela de login aceita **dois formatos no mesmo campo** — o sistema detecta automaticamente:
 
-### Opção A — E-mail
-- Quem usa: gestores, administrativos, motoristas que têm e-mail.
-- Recuperação de senha: pelo próprio Firebase (link "Esqueci a senha").
-- Exemplo: `joao@macro.local`
+- **E-mail** (gestores, administrativos): `joao@macro.local`
+- **Matrícula 7 dígitos** (motoristas internos): `1234567` — quando digitar 7 dígitos, aparece a legenda "✓ Detectado login por matrícula".
 
-### Opção B — Matrícula de 7 dígitos
-- Quem usa: motoristas internos que já têm matrícula da empresa.
-- Como funciona: ao digitar 7 dígitos numéricos, o sistema mostra `✓ Detectado login por matrícula (7 dígitos)`. A conversão para o Firebase é transparente.
-- Recuperação de senha: feita pelo Encarregado/DP/Admin (criar novo login).
-- Exemplo: `1234567`
+Recuperação:
+- E-mail → link "Esqueci senha" no Firebase.
+- Matrícula → Encarregado/DP/TI criam novo login.
 
-> **Dica:** o sistema mostra automaticamente quando detecta matrícula. Não precisa escolher entre uma aba e outra — basta digitar.
+Ao entrar, um **splash screen** navy aparece enquanto o Firebase inicializa (cold-start). Fade-out ao terminar.
 
-### Quando o acesso é bloqueado
-Se o Admin TI ou o DP desativarem o usuário, a tentativa de login devolve:
-> *"Acesso desativado. Procure o Departamento Pessoal."*
+Se o Admin/DP desativarem sua conta:
+> "Acesso desativado. Procure o Departamento Pessoal."
+
+Baixe este manual a qualquer momento na tela de login (botão **Baixar manual completo do sistema**).
 
 ---
 
-## 4. Regras de negócio inegociáveis
+## 4. Regras inegociáveis
 
-Estas regras estão protegidas no código e **não podem ser violadas**:
+Estas regras estão protegidas no código:
 
-| Regra | Onde se aplica |
+| Regra | Onde |
 |---|---|
-| 🚫 **Não existe cadastro direto** de motorista ou veículo — sempre via Requerimento. | `/requerimentos/novo` |
-| ✅ Exceção administrativa: Admin TI, DP e Encarregado podem **criar login diretamente** para motorista (entrega rápida de acesso, mas sem pular o DP — o motorista precisa estar aprovado antes). | `/users` |
-| 🪪 **Motorista só fica operacional após aprovação do DP** (`approvedAt` gravado). Antes disso, NÃO aparece em listas de checklist nem como titular de veículo. | Sistema inteiro |
-| 🚗 **Placa do veículo é opcional** mas a TAG é obrigatória (equipamentos pesados sem emplacamento podem ficar sem placa). Quando preenchida, a placa é única no sistema. | Wizard Step 3 |
-| 💰 **Valor mensal de aluguel é obrigatório para TODO veículo**, mesmo os próprios (auto-aluguel interno) — necessário para relatórios de custo. | Wizard Step 5, VehicleDetail |
-| 📋 **1 template = 1 tipo de equipamento.** Ex.: "Retroescavadeira" tem 1 template usado tanto na Vistoria de Entrada quanto no Diário. Não cria 2 templates para o mesmo tipo. | `/templates` |
-| 🔍 **A 1ª execução de cada veículo é a Vistoria de Entrada** — só o Adm de Frota (ou Admin) pode lançá-la. Os outros perfis ficam bloqueados com mensagem clara até a Vistoria ser registrada. | `/checklist/manual`, `/checklist/digital` |
-| 🧑‍🤝‍🧑 **Encarregado e Frota só veem motoristas/veículos da sua equipe.** A equipe é definida pelo DP. | `/checklists`, `/veiculos`, `/users` |
+| 🚫 Não existe cadastro direto de motorista/veículo — sempre via Requerimento. | `/requerimentos/novo` |
+| ✅ Exceção: Admin/DP/Encarregado criam login para motorista já aprovado. | `/users` |
+| 🪪 Motorista só operacional após aprovação do DP (`approvedAt`). | Sistema inteiro |
+| 🚗 **Placa** e/ou **TAG** obrigatórias no veículo. Placa é única. | Wizard Step 3 |
+| 💰 **Valor mensal** obrigatório em todo veículo (contabilidade gerencial). Para alugados vem do catálogo do Medição. | Wizard Step 5, VehicleDetail |
+| 📋 **1 template = 1 tipo de equipamento**. | `/templates` |
+| 🔍 **1ª execução** de cada veículo é a **Vistoria de Entrada** — só Frota (ou Admin) lança. | `/checklist/manual`, `/checklist/digital` |
+| 🧑‍🤝‍🧑 Encarregado e Frota veem só **sua equipe**. | Sistema inteiro |
+| 🏦 Dados bancários no Wizard: **PIX** OU **Banco+Ag+Conta**. | Wizard Step 3 |
+| 📸 Foto obrigatória no checklist bloqueia envio até o motorista anexar. | ChecklistFill |
+| ✍ Toda operação de backup/import/reset registra em `audit_backups`. | BackupAdmin |
 
 ---
 
-## 5. Guia por perfil
+## 5. Guia por perfil (detalhado)
 
-### 5.1 Administrador TI
+### 5.1 Motorista
 
-**Quando usar este perfil:** raramente, apenas para tarefas administrativas (criar primeiros usuários gestores, ajustar perfis, casos especiais).
+**Objetivo:** preencher checklist diário em menos de 1 minuto pelo celular.
 
-#### Telas e ações
+#### 🚗 `/checklist/digital` — Novo Checklist
 
-**`/users` — Usuários do Sistema**
-1. **"Novo usuário" (botão azul superior):** cria um usuário do zero (qualquer perfil).
-   - Quando o perfil escolhido for *Motorista*, o sistema cria automaticamente o espelho na coleção operacional `drivers` — esse motorista já fica habilitado para checklist (exceção administrativa).
-2. **Editar usuário (botão lápis):** altera nome, telefone, função. O e-mail/login do Firebase não muda por aqui.
-3. **Desativar / Reativar:** alterna o acesso. Usuário desativado não consegue logar (mensagem clara é exibida).
-4. **Excluir (lixeira vermelha):** remove o registro do usuário do banco. Use com cuidado.
+**Fluxo típico da tela:**
+- Cabeçalho: *"Bom dia, <nome>! Vamos ao checklist."*
+- **Card do veículo titular** já selecionado (se você opera vários, aparece dropdown).
+- **Banner azul** informativo do template: *"Template: Retroescavadeira · 21 itens"*.
+- Itens com **defaultEnabled** já vêm como **Conforme (verde)**. Toque em **Não Conforme (vermelho)** apenas nos itens com problema.
+- Campos condicionais (texto/número/foto) aparecem quando o item exige.
+- Observações opcionais.
+- Botão **Enviar checklist** → grava + gera notificação WhatsApp para Encarregado e Frota.
 
-**`/templates` — Templates de Checklist**
-Embora seja função da Segurança do Trabalho, o Admin TI também acessa.
+**Bloqueios que você pode ver:**
+- *"Este veículo ainda não tem Vistoria de Entrada."* → só o Adm de Frota libera. Avise-o.
+- *"Foto obrigatória no item X"* → o botão de envio fica cinza até você anexar.
+- *"Você não está vinculado a nenhum veículo — procure o Encarregado."*
 
-**`/teams` — Equipes**
-Embora seja função do DP, o Admin TI também acessa.
+#### 📋 `/checklists` — Meus Checklists
 
----
-
-### 5.2 Departamento Pessoal (DP)
-
-**O DP é coadministrador do sistema.** Ele controla quem entra, quem é aprovado e quem opera.
-
-#### Tela 1 — `/requerimentos`
-
-Lista todos os Requerimentos em andamento. O DP é o **primeiro gargalo** do fluxo.
-
-- **Status "Pendente Análise":** abre o detalhe, confere documentos, vê dados pessoais, contratos, assinaturas, ASO, validade de CNH etc.
-- **Para Motorista:** clica em **"Aprovar"** → o motorista vira `Aprovado · sem login` e já pode receber login pelo `/users`.
-- **Para Veículo:** clica em **"Aprovar"** → o requerimento vai para a fila da Segurança do Trabalho (que define o template).
-- **Para Veículo + Motorista (combinado):** aprova → vai para Segurança; quando a vistoria for aprovada, o motorista também é ativado automaticamente.
-- **Reprovar:** o sistema marca o motorista/veículo como inativo. Use quando faltam documentos críticos.
-
-#### Tela 2 — `/teams` — Equipes
-
-Aqui o DP estrutura as equipes operacionais (ex.: *Equipe Asfalto*, *Equipe Drenagem*).
-
-1. **"Nova Equipe":** define o nome.
-2. **Seleciona o encarregado responsável** (o líder que vai gerenciar a equipe no dia a dia).
-3. **Marca os motoristas que pertencem à equipe** — dois blocos:
-   - **Motoristas com login no sistema** (usuários que já entraram pelo `/users` ou que receberam login via "Criar login").
-   - **Motoristas pré-cadastrados sem login** (vindos do fluxo do Requerimento, antes da entrega do acesso).
-4. **Salvar** — o sistema propaga o `teamId` para todos os membros e para o líder, automaticamente.
-
-> A partir desse momento, o Encarregado escolhido só enxerga os motoristas, veículos e checklists dessa equipe.
-
-#### Tela 3 — `/users` — Usuários do Sistema
-
-O DP tem **acesso total** igual ao Admin TI:
-- Cria login para motoristas aprovados (modal com 2 opções: E-mail ou Matrícula 7 dígitos).
-- Edita dados de qualquer usuário.
-- Ativa/desativa acesso ao sistema.
-- Cria usuários do zero (exceção administrativa).
+Histórico só dos seus. Toque em qualquer para ver detalhes + **Imprimir/Salvar PDF** (botão azul).
 
 ---
 
-### 5.3 Encarregado
+### 5.2 Encarregado
 
-**O Encarregado é o gestor da equipe na ponta.** Ele abre requerimentos, acompanha checklists e dá apoio.
+**Objetivo:** gestão da equipe na ponta — indicar necessidades, acompanhar checklists, apoiar motoristas.
 
-#### Tela 1 — `/requerimentos/novo`
+#### 📩 `/indicacoes/nova` — Indicação de Necessidade
+Não abre Requerimento — abre uma **Indicação** livre contando o que precisa. Status: `ABERTA`. O Frota converte no Wizard (`?fromIndicacao=<id>`).
 
-Wizard guiado em 6 passos. Pode requerer:
-- **Apenas motorista** (contratação nova).
-- **Apenas veículo** (compra ou aluguel novo).
-- **Veículo + motorista** (entrada combinada).
+#### 📩 `/indicacoes` — Lista das Indicações
+Vê as suas indicações e o status atual (Aberta, Convertida em Requerimento, Descartada).
 
-> **Atenção:** observações do motorista escritas no Wizard aparecem inteiras (texto multilinha) na revisão antes de enviar. Confira antes de submeter.
+#### 📋 `/checklists` — Checklists da Equipe
+Banner azul: *"Filtrando pela sua equipe: <nome> · N membros"*. Só os checklists da sua equipe aparecem.
 
-Após enviar, o requerimento vai para a fila do DP.
+#### 🧾 `/checklists/painel` — Painel de Checklists
+Contadores em tempo real: Ativo · OK · Pendentes · Não-conformes — só da equipe.
 
-#### Tela 2 — `/checklists`
+#### 📝 `/checklist/manual` — Lançar do Papel
+Selecione motorista → veículo padrão sugerido → preencha item a item → salvar.
 
-Mostra automaticamente os checklists da **sua equipe** (filtrado pelo `teamId`). Banner azul aparece confirmando: *"Filtrando pela sua equipe: Equipe Asfalto · 6 membros"*.
-
-Toque em qualquer checklist para ver detalhes + imprimir/salvar PDF.
-
-#### Tela 3 — `/checklist/manual` (Lançar checklist do papel)
-
-Quando o motorista preenche o checklist em papel (sem celular):
-1. Seleciona o motorista da equipe.
-2. O veículo padrão é sugerido automaticamente.
-3. Lança item a item.
-4. Salva.
-
-#### Tela 4 — `/users` — Criar Login Motorista
-
-O Encarregado pode entregar login a motoristas **da sua equipe** já aprovados pelo DP:
-1. No bloco *"Aprovados pelo DP · sem login"*, encontra o motorista.
-2. Clica em **"Criar login"**.
-3. Escolhe **E-mail** ou **Matrícula 7 dígitos**.
-4. Define uma senha inicial (mínimo 6 caracteres).
-5. **Anota e entrega ao motorista.**
-
-> **Importante:** o Encarregado não vê motoristas de outras equipes — só os que o DP relacionou à sua.
+#### 👥 `/users` — Criar Login de Motorista
+Só motoristas **da sua equipe** já aprovados pelo DP. Escolha E-mail ou Matrícula 7 dígitos + senha inicial e entregue ao motorista.
 
 ---
 
-### 5.4 Administrador de Frota
+### 5.3 Administrador de Frota
 
-**O Administrador de Frota é o dono operacional dos veículos.** Recebe o equipamento, libera para uso e acompanha custos.
+**Objetivo:** dono operacional dos veículos — configurar, liberar, controlar custo.
 
-#### Tela 1 — `/veiculos` — Lista de Veículos
+#### 📩 `/indicacoes` — Converter em Requerimento
+Botão **"Converter em Requerimento"** abre o Wizard com o contexto preservado.
 
-- Lista todos os veículos cadastrados, com **TAG**, **Placa** (chip azul-marinho), modelo, valor mensal, origem (próprio/alugado/prestação) e alerta visual de CRLV vencido/a vencer (badge âmbar/vermelho).
-- Toque em qualquer card para abrir o detalhe.
+#### 🧙 `/requerimentos/novo` — Wizard 7 etapas
+Consulte a seção [6.1 Wizard de Requerimento](#61-wizard-de-requerimento-7-etapas).
 
-#### Tela 2 — `/veiculos/:id` — Detalhe do Veículo
+#### 🚗 `/veiculos` — Lista de Veículos
+Cards com placa/TAG, modelo, status, badge de CRLV (verde/amarelo/vermelho). Toque para abrir o detalhe.
 
-Edição completa. Tem 3 blocos:
+#### 🚗 `/veiculos/:id` — Detalhe do Veículo
+Três blocos:
+1. **Identificação**: TAG, placa, marca, modelo, ano.
+2. **Custos e Gestão**: origem, valor mensal, patrimônio, aquisição, CRLV, equipe. *Após ativação, campos de origem/valor são somente-leitura para você (Medição altera).*
+3. **Vínculos operacionais**: motorista titular + template de checklist.
 
-**1. Identificação**
-- TAG (patrimonial)
-- Placa (Mercosul ou antigo, opcional)
-- Marca / Modelo / Ano
+#### 📋 `/checklist/manual` — Vistoria de Entrada (1ª execução)
+Banner azul: *"1ª execução deste veículo — Vistoria de Entrada."* Preencha os 21 itens. Botão vira **"Registrar Vistoria de Entrada"**.
 
-**2. Custos e Gestão (Frota)** — esta é a área mais importante
-- **Origem:** próprio / alugado / prestação de serviço
-- **Valor mensal de aluguel (R$)** — *obrigatório, mesmo para próprios*. Vai para os relatórios de custo.
-- **Valor de patrimônio (R$)** — usado em depreciação dos próprios.
-- **Data de aquisição** — usado para idade da frota.
-- **Vencimento do CRLV** — usado nos alertas do Dashboard e Relatórios.
-- **Equipe responsável** — define qual equipe opera o veículo (combina com a estrutura criada pelo DP).
+Após isso, o veículo fica `ACTIVE` e o motorista opera normalmente.
 
-**3. Vínculos operacionais**
-- **Motorista titular** — o motorista padrão deste veículo. Quando ele logar, o veículo já vem auto-selecionado no checklist.
-- **Template de checklist** — escolhe qual template (criado pela Segurança) será usado nas vistorias e diários deste veículo.
+#### 📊 `/frota/relatorios` e `/frota/custos`
+KPIs: total, patrimônio, custo mensal, idade média. Alertas CRLV. Alocação por equipe. Custos agregados por porte/tipo/equipe.
 
-#### Tela 3 — `/frota/relatorios` — Relatórios da Frota
+#### 🛰 `/getrak` — Importação GETRAK
+Consulte [6.2 Importação GETRAK](#62-importação-getrak).
 
-Quatro KPIs no topo, em cards coloridos:
-- **Total de veículos** (próprios + alugados + prestação)
-- **Patrimônio total dos próprios** (soma `valorPatrimonio`)
-- **Custo mensal de aluguel** (terceiros + auto-aluguel interno)
-- **Idade média da frota** (baseada em ano de fabricação ou data de aquisição)
+---
 
-Abaixo dos KPIs:
-- **CRLV — vencimentos críticos:** lista de veículos vencidos ou a vencer em até 30 dias, cada um linkando para o detalhe.
-- **Alocação por equipe:** quantos veículos cada equipe tem + custo agregado por equipe + chips com as TAGs.
+### 5.4 Departamento Pessoal (DP)
 
-#### Tela 4 — `/checklist/manual` (Vistoria de Entrada)
+**Objetivo:** coadministrador — aprova pessoas, estrutura equipes, controla acessos e temas.
 
-Quando um veículo recém-ativado é apresentado ao Adm de Frota, **ele faz a Vistoria de Entrada** (que é o primeiro checklist do veículo). O sistema detecta automaticamente que é a 1ª execução e:
-- Mostra um banner azul: *"1ª execução deste veículo — Vistoria de Entrada."*
-- O botão muda de "Salvar checklist" para "**Registrar Vistoria de Entrada**".
-- Outros perfis (motorista, encarregado) que tentarem lançar antes do Adm de Frota são bloqueados com mensagem clara.
+#### 📥 `/requerimentos` — Fila de Análise
+- **Motorista**: confere docs (ASO, CNH, contrato) → **Aprova** → vira `NO_LOGIN_USER` (aprovado sem login).
+- **Veículo**: **Aprova** → vai para Segurança.
+- **Veículo + Motorista**: aprova → segue para Segurança; motorista ativa quando vistoria aprovar.
+- **Reprovar** marca como inativo.
 
-A partir dessa 1ª execução, o veículo está liberado e o motorista/encarregado podem lançar o checklist diário normalmente.
+#### 👥 `/teams` — Equipes
+Nova Equipe → nome → encarregado responsável → motoristas membros (com login + sem login). `teamId` propaga automaticamente.
+
+#### 👤 `/users` — Usuários
+Cria/edita/desativa qualquer usuário. Cria login para motoristas aprovados. Bloco **"Aprovados pelo DP · sem login"** facilita o processo.
+
+#### 🎨 `/temas` — Temas por perfil
+Configura Sidebar + backgrounds **por perfil de acesso**. Ex.: Motorista pode ver verde-escuro; DP azul-navy. Consulte [6.4 Temas](#64-temas-por-perfil).
 
 ---
 
 ### 5.5 Segurança do Trabalho
 
-**A Segurança define os critérios técnicos do que será conferido em cada equipamento.**
+**Objetivo:** definir critérios técnicos de conferência dos equipamentos.
 
-#### Tela 1 — `/templates` — Templates de Checklist
+#### 📋 `/templates` — Templates de Checklist
+Novo template → nome (= tipo do equipamento) → itens com:
+- **Texto** ("Verificar óleo")
+- **Tipo**: Conforme/NC · Texto · Número · Foto
+- **Obrigatório**, **Habilitado por padrão**, **Permitir foto**
+- Opcional: **Legenda de criticidade** (VD/AZ/AM/VM) — VM bloqueia o veículo se marcado como NC.
 
-1. **"Novo template":** define o nome (= tipo do equipamento — ex.: "Retroescavadeira", "Caminhão Toco", "Carro Pequeno").
-   - **Atenção:** só 1 template por tipo. O sistema bloqueia duplicatas com mensagem clara.
-2. **Adiciona os itens** que serão checados. Cada item tem:
-   - **Texto** (ex.: "Verificar nível de óleo do motor")
-   - **Tipo:**
-     - *Conforme/Não Conforme* (botão verde/vermelho)
-     - *Texto* (campo aberto)
-     - *Número*
-     - *Foto*
-   - **Obrigatório** (sim/não)
-   - **Habilitado por padrão** (já vem marcado como "Conforme" para o motorista — agiliza)
-   - **Permitir foto** (motorista pode anexar foto do item)
-3. **Salva** — o template fica disponível para a Frota vincular aos veículos.
+Regra: **1 template por tipo** — o sistema bloqueia duplicatas.
 
-#### Tela 2 — `/vistorias` — Vistorias do fluxo de Requerimento
+#### ✅ `/vistorias` — Fila de Vistoria do Fluxo
+Requerimentos aprovados pelo DP entram aqui. Você vincula template + preenche itens documentais/técnicos + **Aprova** (vai para Frota) ou **Reprova**.
 
-Quando o DP aprova um Requerimento de veículo, este aparece na fila da Segurança. A Segurança então:
-1. Abre o requerimento.
-2. **Vincula um template** (caso o veículo precise de um específico).
-3. **Preenche os itens** da vistoria do fluxo (uma checagem inicial documental/técnica).
-4. **Aprova** → o veículo vai para a fila da Frota (que vai ativar e fazer a Vistoria de Entrada propriamente dita).
-5. **Reprova** → o veículo não entra no sistema.
+> **Vistoria do fluxo** (você) ≠ **Vistoria de Entrada** (Frota). São momentos diferentes.
 
-> Esta "vistoria do fluxo" é diferente da "Vistoria de Entrada" (que é a 1ª execução de checklist do veículo, feita pelo Adm de Frota). Ambas existem porque servem a momentos diferentes.
+#### 🔄 `/templates/revisao` — Revisão semestral
+A cada 6 meses o sistema alerta para você conferir o template. Alterações ficam registradas em `templateRevision`.
 
 ---
 
-### 5.6 Motorista
+### 5.6 Medição
 
-**O motorista é o usuário final no campo.** O sistema foi desenhado para ele preencher o checklist em **menos de 1 minuto pelo celular**.
+**Objetivo:** catálogo canônico de Tipos de Veículo com valores de aluguel.
 
-#### Tela 1 — `/checklist/digital` — Novo Checklist Diário
+#### 🚚 `/tipos-veiculo` — Catálogo
+Cada tipo tem: nome, categoria/subtipo, porte, medição (KM/Horímetro), valor mensal, hora extra, dia extra, ativo/inativo, `historicoValores[]` (snapshot imutável de cada alteração de preço).
 
-Quando ele logar, vai ver:
-- Cabeçalho: *"Bom dia! Vamos ao checklist."* - Falta deixar o bom dia dinâmico.
-- **Card azul-marinho com o seu veículo** já selecionado (se ele é titular de um único veículo): TAG, placa, modelo. Se ele tem múltiplos veículos, aparece um seletor.
-- **Template auto-selecionado** (definido pela Frota): aparece como badge informativa *"Template: Retroescavadeira · 21 itens"*.
-- **Lista de itens prontos para responder:**
-  - Itens "Habilitados por padrão" já vêm como **Conforme** (botão verde).
-  - O motorista só toca em **Não Conforme** nos itens com problema.
-  - Campo de texto/número/foto se o item exigir.
-- **Observações** (campo opcional)
-- Botão **"Enviar checklist"** → grava e gera notificação WhatsApp para Encarregado e Frota.
+Quando o Frota abre Requerimento com origem "Alugado *", o input manual **some** e aparece um `<select>` puxando deste catálogo. O Wizard grava `tipoSnapshot` no documento do veículo — imutável.
 
-Após enviar:
-- Mensagem de sucesso *"Checklist registrado"*.
-- Dois botões: **"Ver detalhe / Imprimir"** e **"Meus checklists"**.
-
-#### Tela 2 — `/checklists` — Meus Checklists
-
-Histórico dos checklists que o motorista preencheu. Toque em qualquer registro para ver detalhes e **imprimir/salvar PDF** (botão azul "Imprimir / Salvar PDF").
-
-#### Quando o sistema bloqueia o motorista
-
-Se o veículo ainda não teve a Vistoria de Entrada feita pelo Adm de Frota, o motorista vê:
-> ⚠️ *"Este veículo ainda não tem Vistoria de Entrada. Apenas o Adm de Frota pode lançar a 1ª execução. Avise o gestor para liberar o equipamento."*
-
-E o botão fica "Aguardando Adm de Frota" — desabilitado.
+#### 📊 `/frota/custos` e `/frota/relatorios`
+Agregados por Tipo/Equipe/Porte. Consulta comparativa.
 
 ---
 
-## 6. Cenário integrado — operação completa de ponta a ponta
+### 5.7 Performance
 
-Para ilustrar a integração entre os perfis, segue um caso real:
+**Objetivo:** catálogo de Funções/Cargos + estrutura de Equipes.
 
-### Cenário: A empresa contratou um novo motorista (João) e adquiriu uma retroescavadeira.
+#### 🧾 `/funcoes` — Funções/Cargos
+CRUD do catálogo. O Wizard puxa as **ativas** no combo de Função do Motorista.
 
-#### Passo 1 — Segurança do Trabalho prepara o template
-- Acessa `/templates`.
-- Cria template **"Retroescavadeira"** com os 21 itens da vistoria/diário (verificar óleo, freios, vazamentos, EPIs disponíveis no equipamento, etc.).
-
-#### Passo 2 — Encarregado abre os Requerimentos
-- Acessa `/requerimentos/novo`.
-- Cria um Requerimento **Veículo + Motorista**:
-  - Motorista: João, telefone, função "Operador de Máquinas", CNH categoria E, ASO em dia.
-  - Veículo: Retroescavadeira, marca/modelo, ano, placa (se houver), valor mensal de aluguel R$ 15.000,00, origem "alugado".
-- Submete. Notificação vai para o DP.
-
-#### Passo 3 — DP analisa
-- Acessa `/requerimentos`.
-- Abre o requerimento, confere contratos, ASO, CNH.
-- Clica em **"Aprovar"**.
-- O sistema marca o motorista João como `Aprovado · sem login` e o requerimento vai para a fila da Segurança.
-
-#### Passo 4 — DP cria a equipe (se ainda não existir)
-- Acessa `/teams`.
-- Cria **"Equipe Asfalto"** com:
-  - Encarregado responsável: Pedro
-  - Motoristas membros: João (recém-aprovado), entre outros.
-- Salva.
-
-#### Passo 5 — Encarregado cria o login do motorista
-- Acessa `/users` → bloco **"Aprovados pelo DP · sem login"**.
-- Vê o João. Clica em **"Criar login"**.
-- Escolhe **Matrícula 7 dígitos** (porque João já tem matrícula `1234567` na empresa).
-- Define senha inicial: `senha123`.
-- Entrega para o João: *"Sua matrícula é 1234567 e a senha inicial é senha123. Acesse pelo celular."*
-
-#### Passo 6 — Segurança aprova a vistoria do requerimento
-- Acessa `/vistorias`.
-- Abre o requerimento da retroescavadeira.
-- Vincula o template "Retroescavadeira" criado no Passo 1.
-- Confere os itens documentais e técnicos.
-- **Aprova**. O veículo vai para a fila da Frota.
-
-#### Passo 7 — Adm de Frota recebe o veículo e configura
-- Acessa `/veiculos`.
-- Vê a retroescavadeira recém-ativada.
-- Abre o detalhe `/veiculos/<id>`:
-  - Confere a placa, TAG.
-  - **Custos e Gestão:** confirma valor aluguel R$ 15.000, define data de aquisição, vencimento do CRLV.
-  - **Equipe responsável:** Equipe Asfalto.
-  - **Vínculos operacionais:** define o **motorista titular** (João) e o **template de checklist** (Retroescavadeira).
-- Salva.
-
-#### Passo 8 — Adm de Frota faz a Vistoria de Entrada
-- Acessa `/checklist/manual`.
-- Seleciona o veículo. O sistema mostra o banner azul: *"1ª execução deste veículo — Vistoria de Entrada."*
-- Preenche os 21 itens.
-- Clica em **"Registrar Vistoria de Entrada"**.
-
-#### Passo 9 — Motorista João começa a usar o sistema
-- Abre o navegador do celular no link da empresa.
-- Faz login com matrícula `1234567` e senha `senha123`.
-- O sistema detecta automaticamente: *"✓ Detectado login por matrícula (7 dígitos)"*.
-- É redirecionado para o Dashboard, com menu reduzido (Novo Checklist Diário, Meus Checklists).
-- Vai em **"Novo Checklist Diário"**:
-  - O card azul aparece com a retroescavadeira (já é o veículo titular).
-  - O template "Retroescavadeira" já vem selecionado.
-  - Os itens "Habilitados por padrão" já estão marcados como Conforme.
-  - Ele só toca em **"Não Conforme"** num item específico, anexa foto.
-  - Adiciona uma observação curta.
-  - Clica em **"Enviar checklist"**.
-
-#### Passo 10 — Encarregado e Frota são notificados
-- Notificação WhatsApp é gerada com link para o detalhe.
-- O Encarregado Pedro abre `/checklists` e vê o registro do João (banner *"Filtrando pela sua equipe: Equipe Asfalto"*).
-- Pode imprimir/salvar PDF do checklist.
-
-#### Passo 11 — Adm de Frota consulta os relatórios
-- Acessa `/frota/relatorios`.
-- Vê os KPIs atualizados: novo veículo no custo mensal R$ 15.000 (terceiros), idade média recalculada.
-- Vê a Retroescavadeira no bloco *"Alocação por equipe: Equipe Asfalto · custo mensal R$ 15.000"*.
-
-✅ **Operação ativa e rastreável de ponta a ponta.**
+#### 👥 `/teams` — Equipes (compartilhado com DP)
+Mesma tela do DP. Você foca na parte organizacional.
 
 ---
 
-## 7. Glossário
+### 5.8 Administrador TI
 
-| Termo | O que significa |
+**Objetivo:** superusuário — usuários, backup e ambiente.
+
+#### 👤 `/users` — Controle total
+Cria qualquer perfil do zero. Ao criar Motorista, o sistema também cria o espelho em `drivers` (exceção documentada).
+
+#### 💾 `/backup` — Backup & Restauração
+Consulte [6.5 Backup & Restauração](#65-backup--restauração). Um dos módulos mais poderosos:
+- Filtro por Função na exportação XLSX de `users`.
+- Empacotamento **XLSX + Mídias em ZIP** (default: ligado).
+- Import JSON preservando IDs.
+- Reset por coleção ou completo (com dupla confirmação + prompt "APAGAR TUDO").
+- Auditoria em tempo real (`audit_backups`).
+
+---
+
+## 6. Módulos transversais
+
+### 6.1 Wizard de Requerimento (7 etapas)
+
+Acesso: Frota / DP / Admin (ou Frota convertendo Indicação do Encarregado).
+
+Etapas:
+1. **Tipo**: Veículo · Motorista · Veículo + Motorista
+2. **Dados Iniciais**: proprietário, empresa (se aplicável)
+3. **Informações Adicionais**:
+   - Para Veículo: **cascata** Porte → Categoria → Subtipo → Tipo. Ano fabricação sempre obrigatório. Ex.: Pesado → Caminhões → Toco → Basculante.
+   - Para Motorista: nome, CPF, CNH, categoria, ASO, dados bancários (**PIX OU Banco+Ag+Conta**), função (pool do Performance).
+4. **Documentos**: upload de CRLV, CNH, ASO, contratos (Base64 por enquanto — migra para Storage no roadmap).
+5. **Detalhes**:
+   - Veículo: horímetro (Retro/Escav/Rolo) ou KM (demais). Origem: **Próprio** (input manual de valor) ou **Alugado *** (select do catálogo Medição → grava `tipoSnapshot` imutável).
+6. **Revisão**: cards com tudo consolidado.
+7. **Conclusão**: ✓ verde + protocolo + botões (Ver requerimento / Criar outro / Painel).
+
+Rascunho: pode ser salvo a qualquer momento.
+
+### 6.2 Importação GETRAK
+
+Acesso: Frota / Admin em `/getrak`.
+
+1. Upload do Excel do sistema terceiro (deslocamentos + paradas por veículo).
+2. O sistema relaciona automaticamente pela **placa**.
+3. Tabela 100% largura com colunas: Placa, Motorista, **Horas totais** (grande, negrito), **Ocioso** (menor, sem negrito), KM, últimos locais.
+4. Ao clicar num local, abre o Google Maps com lat/lng.
+5. Sem duplicação de KM, sem "fantasma" de cabeçalho.
+
+### 6.3 Painel de Checklists (`/checklists/painel`)
+
+Acesso: Frota, Encarregado, Admin.
+
+Contadores em tempo real: Ativo · OK · Pendentes · Não-conformes. Encarregado vê só a equipe; Frota/Admin veem tudo. Filtro clicável nos cards.
+
+### 6.4 Temas por perfil (`/temas`)
+
+Acesso: DP, Admin.
+
+Configura CSS variables globais (`--sidebar-bg`, `--page-bg`, cores de acento, tipografia base) **por perfil**. Quando um Motorista loga, a Sidebar é a que o DP configurou para o role `motorista`. Contraste de leitura é obrigatório — o sistema alerta se o par (fundo × texto) ficar ilegível.
+
+### 6.5 Backup & Restauração (`/backup`)
+
+Acesso: só Admin TI.
+
+Recursos:
+- **Contagem em tempo real** das 11 coleções mapeadas.
+- **Exportar por coleção**: JSON / CSV / XLSX. XLSX pode virar **XLSX+ZIP** com mídias (checkbox ligado por padrão): a planilha guarda **caminhos relativos** e o zip carrega os arquivos binários em `midias/<colecao>/<docId>/<campo>.<ext>`.
+- **Filtro por Função (role)** no card `users` — dropdown padrão "Todos".
+- **Backup completo**: JSON único ou XLSX multi-abas (+ opção ZIP).
+- **Import JSON**: batches de 400 preservando o `id` original.
+- **Reset por coleção**: dupla confirmação + prompt `RESETAR <COLECAO>`.
+- **Reset banco completo**: prompt `APAGAR TUDO` — `audit_backups` é preservado.
+- **Auditoria** em `audit_backups`: quem, quando, ação, formato, contagem, tamanho, filtro aplicado, nº de mídias empacotadas.
+
+Recomendação de regras Firestore em produção:
+```
+match /audit_backups/{docId} {
+  allow read, create: if isAdmin();
+  allow update, delete: if false;   // imutável
+}
+```
+
+---
+
+## 7. Cenário integrado ponta-a-ponta
+
+**Contexto:** empresa contratou o motorista João e adquiriu uma retroescavadeira alugada.
+
+1. **Segurança** cria template "Retroescavadeira" (`/templates`).
+2. **Medição** confirma o Tipo de Veículo "Retroescavadeira" no catálogo (`/tipos-veiculo`), valor R$ 15.000/mês.
+3. **Encarregado** abre uma Indicação em `/indicacoes/nova` descrevendo a necessidade.
+4. **Frota** converte a Indicação em Requerimento **Veículo + Motorista** (`/requerimentos/novo?fromIndicacao=<id>`) — Wizard 7 etapas.
+5. **DP** analisa em `/requerimentos`, aprova → motorista vira `NO_LOGIN_USER`, requerimento vai para Segurança.
+6. **DP** monta a **Equipe Asfalto** em `/teams` com o encarregado Pedro e o motorista João.
+7. **Encarregado** cria login para João em `/users` — matrícula `1234567` + senha inicial.
+8. **Segurança** aprova a Vistoria do fluxo em `/vistorias` (vincula o template, confere docs).
+9. **Frota** configura o veículo em `/veiculos/:id` (equipe, motorista titular, template) e lança a **Vistoria de Entrada** em `/checklist/manual`.
+10. **Motorista João** loga com `1234567` + senha, veículo aparece pré-selecionado, preenche checklist em <1 min, envia.
+11. **Encarregado** e **Frota** recebem notificação WhatsApp Click-to-Chat.
+12. **Frota** consulta `/frota/relatorios` — novo veículo aparece nos KPIs; **Medição** vê `/frota/custos` atualizado.
+
+✅ Operação ativa e rastreável ponta-a-ponta.
+
+---
+
+## 8. Glossário
+
+| Termo | Significado |
 |---|---|
-| **Requerimento** | Solicitação formal de entrada de motorista, veículo ou ambos. Único caminho para o cadastro chegar ao sistema. |
-| **Aprovação do DP** | Marca o motorista/veículo como autorizado. Gera o campo `approvedAt`, que é a "prova" de aprovação. Sem isso, o sistema trata como pendente. |
-| **Vistoria de Entrada** | 1ª execução de checklist do veículo após ele entrar na operação. Exclusiva do Adm de Frota. |
-| **Diário** | Demais execuções de checklist (do dia a dia). Feita pelo motorista (app) ou encarregado (papel). |
-| **Template** | Conjunto de itens a serem checados para um tipo de equipamento. 1 template por tipo. |
-| **Equipe** | Agrupamento operacional (encarregado + motoristas + opcionalmente veículos). Estrutura criada pelo DP. |
-| **TAG** | Identificador patrimonial do equipamento (ex.: R-1, EQP-15). Pode ser "sem TAG" para terceirizados. |
-| **Placa** | Placa Mercosul ou antiga. Opcional para equipamentos sem emplacamento. Quando preenchida, é única. |
-| **Auto-aluguel interno** | Valor mensal atribuído a um veículo próprio para fins de relatório de custo (não é cobrança real, é contabilidade gerencial). |
-| **Status do motorista** | `PENDING_APPROVAL` (aguardando DP) → `NO_LOGIN_USER` (aprovado, sem login) → `ACTIVE` (aprovado, com login). |
-| **Status do veículo** | `PRE_REGISTERED` (criado, aguardando vistoria do fluxo) → `PENDING_ACTIVATION` (aguardando Frota) → `ACTIVE` (operando) → `INACTIVE` (desativado). |
-| **Matrícula** | Identificador interno de 7 dígitos numéricos usado por motoristas para login. Equivalente a um e-mail no Firebase. |
+| **Indicação** | Aviso do Encarregado dizendo o que precisa. Não é cadastro nem Requerimento — é o degrau anterior. |
+| **Requerimento** | Solicitação formal de entrada de motorista/veículo. Único caminho para o cadastro chegar ao sistema. |
+| **Aprovação do DP** | Marca formal (`approvedAt`) que autoriza motorista/veículo. |
+| **Vistoria do fluxo** | Checagem documental feita pela Segurança dentro do fluxo do Requerimento. |
+| **Vistoria de Entrada** | 1ª execução operacional do checklist do veículo, feita pela Frota. |
+| **Checklist diário** | Demais execuções — motorista (app) ou encarregado (papel). |
+| **Template** | Modelo de itens a conferir por tipo de equipamento. 1 por tipo. |
+| **Legenda de criticidade** | Cores VD/AZ/AM/VM ligadas a itens do template. VM bloqueia o veículo automaticamente se NC. |
+| **Equipe** | Encarregado + motoristas + (opcional) veículos. Estrutura montada por DP/Performance. |
+| **TAG** | Identificador patrimonial (R-1, EQP-15). |
+| **Placa** | Mercosul ou antiga. Única no sistema. |
+| **Auto-aluguel interno** | Valor mensal atribuído a veículo próprio para contabilidade gerencial. |
+| **`tipoSnapshot`** | Snapshot imutável do Tipo de Veículo gravado no doc do veículo — protege contrato de alterações retroativas. |
+| **`audit_backups`** | Coleção de trilha imutável de operações do BackupAdmin. |
+| **Matrícula** | Identificador interno 7 dígitos para login sem e-mail. |
+| **Status motorista** | `PENDING_APPROVAL` → `NO_LOGIN_USER` → `ACTIVE` → `INACTIVE`. |
+| **Status veículo** | `PRE_REGISTERED` → `PENDING_ACTIVATION` → `ACTIVE` → `INACTIVE`. |
 
 ---
 
-## 8. FAQ — Perguntas frequentes
+## 9. FAQ geral
 
-**Por que o motorista que cadastrei não aparece no checklist?**
-Provavelmente o DP ainda não aprovou o requerimento dele. Vá em `/motoristas` — ele estará no bloco amarelo *"Aguardando aprovação do DP"*.
+**Splash screen ficou preso.**
+Aguarde até 6 segundos — há um fallback que remove o splash mesmo se o Firebase demorar. Se persistir, F5. Se ainda não abrir, avise o TI (provavelmente `.env` mal configurado ou domínio não autorizado no Firebase).
 
-**Criei um template e ele não aparece para o motorista. Por quê?**
-Pode ser que o veículo do motorista não tenha esse template vinculado. Vá em `/veiculos/<id>` e configure o campo *"Template de checklist"* na seção *"Vínculos operacionais"*.
+**Motorista aprovado não aparece no checklist.**
+Confirma: (a) DP aprovou, (b) foi vinculado a uma Equipe (`/teams`), (c) tem veículo titular vinculado (feito pela Frota em `/veiculos/:id`).
 
-**Motorista esqueceu a senha. Como redefino?**
-- Se o login dele foi por **e-mail**: ele clica em "Esqueci a senha" na tela de login (Firebase envia link de reset).
-- Se foi por **matrícula**: o Encarregado/DP/Admin precisa criar um novo login para ele (futura versão terá tela de redefinição interna).
+**Excel de backup está gigante ou com colunas faltando.**
+Marque o checkbox **"Empacotar mídias em .zip"** no BackupAdmin — o Base64 vira arquivo binário separado; a planilha guarda o caminho. Sem o ZIP, colunas com Base64 são omitidas para não estourar o limite de 32k caracteres do Excel.
 
-**Veículo aparece bloqueado com mensagem "Aguardando Adm de Frota". O que faço?**
-O veículo ainda não teve a 1ª execução (Vistoria de Entrada). Acione o Adm de Frota — só ele pode liberar o equipamento na 1ª vez.
+**Perdi um usuário — como recupero?**
+Se fez backup JSON antes, importe em `/backup` (ele preserva os IDs originais e faz merge). Sem backup, ligar para o TI checar o Firebase Console.
 
-**Preciso reaproveitar um motorista de outra equipe. Como faço?**
-O DP edita a equipe em `/teams` e move o motorista. O `teamId` é atualizado automaticamente.
+**Preciso trocar o motorista titular de um veículo ativo.**
+`/veiculos/:id` → bloco *Vínculos operacionais* → alterar Motorista Titular → salvar.
 
-**Desativei um usuário por engano. Posso reativar?**
-Sim. Em `/users`, encontre o usuário (o card vai estar com opacidade reduzida e badge "Inativo"). Clique em **"Reativar"**.
+**Cadastro direto de motorista em `/users`?**
+É exceção — documente por que fez. Preferível abrir Indicação → Requerimento normal.
 
-**O sistema oferece exportação para Excel?**
-Não nesta versão. Os relatórios da Frota podem ser impressos via PDF do navegador (Ctrl+P). Exportação CSV/Excel está no roadmap.
+**Como sei que o WhatsApp foi enviado?**
+Modal aparece com botão *Abrir conversa* — o clique abre `wa.me/{fone}?text=...`. É Click-to-Chat, não API oficial (integração Meta está no roadmap).
 
-**Por que existe Vistoria do fluxo (Segurança) e Vistoria de Entrada (Frota)?**
-São momentos diferentes:
-- A **Vistoria do fluxo (Segurança)** é uma checagem inicial documental/técnica feita logo após a aprovação do DP, ainda no fluxo do Requerimento — autoriza ou não a continuação.
-- A **Vistoria de Entrada (Frota)** é o 1º checklist operacional do veículo já recebido — confere o estado físico no momento da entrega para uso. Usa o mesmo template do checklist diário.
-
-**Como o Encarregado garante que vê só a sua equipe?**
-O sistema usa o `teamId` em cada motorista/usuário. Quando o Encarregado loga, ele só carrega registros das equipes onde ele é líder ou membro. Banner azul aparece confirmando o filtro.
+**Instalar o app no celular?**
+Botão **Instalar App** na tela de login: Android/Chrome faz prompt nativo; iOS mostra instruções para "Adicionar à Tela de Início".
 
 ---
 
-## Anexos rápidos
-
-### Hierarquia de aprovações (resumo)
+## 10. Hierarquia de aprovações
 
 ```
-┌──────────────┐
-│  Encarregado │  abre Requerimento
-└──────┬───────┘
+┌───────────────┐
+│  Encarregado  │  abre Indicação
+└──────┬────────┘
+       ▼
+┌───────────────┐
+│  Adm de Frota │  converte em Requerimento (Wizard)
+└──────┬────────┘
+       ▼
+┌───────────────┐
+│      DP       │  aprova / reprova (docs, contratos)
+└──────┬────────┘
+       ├────► (Motorista somente) → cria login em /users → Operacional
        │
        ▼
-┌──────────────┐
-│      DP      │  aprova (contratos, documentos)
-└──────┬───────┘
-       │
-       ├────► (Motorista)  → DP cria login → Operacional
-       │
+┌───────────────┐
+│   Segurança   │  vincula template + aprova vistoria do fluxo
+└──────┬────────┘
        ▼
-┌──────────────┐
-│   Segurança  │  vincula template + aprova vistoria do fluxo
-└──────┬───────┘
-       │
+┌───────────────┐
+│  Adm de Frota │  configura veículo + Vistoria de Entrada (1ª exec.)
+└──────┬────────┘
        ▼
-┌──────────────┐
-│  Adm Frota   │  configura veículo + faz Vistoria de Entrada
-└──────┬───────┘
-       │
-       ▼
-┌──────────────┐
-│   Motorista  │  preenche checklist diário pelo app
-└──────────────┘
+┌───────────────┐
+│   Motorista   │  checklist diário pelo app
+└───────────────┘
 ```
 
-### Identificadores rápidos das rotas
+### Rotas rápidas (por perfil)
 
-| Rota | Quem acessa | Para que serve |
-|---|---|---|
-| `/` | Todos | Dashboard inicial |
-| `/login` | Anônimo | Login dual (e-mail / matrícula) |
-| `/requerimentos` | Encarregado, Frota, DP, Admin | Lista de requerimentos |
-| `/requerimentos/novo` | Encarregado, Frota, Admin | Wizard de novo requerimento |
-| `/requerimentos/:id` | Encarregado, Frota, DP, Admin | Detalhe + aprovação |
-| `/veiculos` | Todos os gestores | Lista de veículos |
-| `/veiculos/:id` | Frota, Admin | Detalhe e edição do veículo |
-| `/frota/relatorios` | Frota, Admin | KPIs e relatórios |
-| `/motoristas` | Todos os gestores | Lista de motoristas |
-| `/teams` | DP, Admin | Gestão de equipes |
-| `/templates` | Segurança, Admin | Templates de checklist |
-| `/vistorias` | Segurança, Admin | Fila de vistorias do fluxo |
-| `/checklist/digital` | Motorista, Encarregado | Lançar checklist (app) |
-| `/checklist/manual` | Encarregado, Frota, Admin | Lançar checklist (papel) |
-| `/checklists` | Todos | Histórico (filtrado por perfil) |
-| `/checklists/:id` | Todos | Detalhe + imprimir/PDF |
-| `/users` | Admin, DP, Encarregado, Frota | Usuários e logins de motorista |
+| Rota | Motor. | Enc. | Frota | DP | Seg. | Med. | Perf. | TI |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| `/` (Dashboard) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/checklist/digital` | ✓ | ✓ | | | | | | ✓ |
+| `/checklist/manual` | | ✓ | ✓ | | | | | ✓ |
+| `/checklists` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/checklists/painel` | | ✓ | ✓ | | | | | ✓ |
+| `/indicacoes` · `/indicacoes/nova` | | ✓ | ✓ | | | | | ✓ |
+| `/requerimentos` · `/requerimentos/novo` | | | ✓ | ✓ | | | | ✓ |
+| `/vistorias` | | | | | ✓ | | | ✓ |
+| `/veiculos` · `/veiculos/:id` | | | ✓ | | ✓ | ✓ | ✓ | ✓ |
+| `/motoristas` | | ✓ | ✓ | ✓ | ✓ | | | ✓ |
+| `/frota/relatorios` · `/frota/custos` | | | ✓ | | | ✓ | ✓ | ✓ |
+| `/getrak` | | | ✓ | | | | | ✓ |
+| `/templates` · `/templates/revisao` | | | | | ✓ | | | ✓ |
+| `/tipos-veiculo` | | | ✓ | ✓ | | ✓ | ✓ | ✓ |
+| `/funcoes` | | | | | | | ✓ | ✓ |
+| `/teams` | | | | ✓ | | | ✓ | ✓ |
+| `/users` | | ✓ | ✓ | ✓ | | | | ✓ |
+| `/temas` | | | | ✓ | | | | ✓ |
+| `/backup` | | | | | | | | ✓ |
 
 ---
 
-**Fim do manual.** Para ajustes ou novas funcionalidades, consulte o time de desenvolvimento.
+**Fim do manual.** Sugestões, correções ou pedidos de novos módulos: fale com o time de TI.

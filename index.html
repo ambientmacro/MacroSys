@@ -129,6 +129,13 @@
         transform: translateX(100%);
       }
     }
+
+    /* Estado "seen": aplicado por script inline abaixo quando a sessão já
+         viu o splash. Escondemos INSTANTANEAMENTE (sem transição) para não
+         "piscar" em navegações internas / reloads da mesma aba. */
+    #app-splash.is-seen {
+      display: none !important;
+    }
   </style>
 </head>
 
@@ -148,6 +155,17 @@
     <div class="loader" aria-hidden="true"></div>
     <div class="hint">Preparando o sistema…</div>
   </div>
+  <script>
+    // Script inline (executa ANTES do bundle Vite): se o usuário já viu o
+    // splash nesta sessão (mesma aba/janela), esconde imediatamente.
+    // Isso mata o splash em F5 / navegações internas do dia a dia, mantendo
+    // ele apenas no primeiro cold-start real da sessão.
+    try {
+      if (window.sessionStorage && sessionStorage.getItem("macro-splash-seen") === "1") {
+        document.getElementById("app-splash").classList.add("is-seen");
+      }
+    } catch (e) { /* sessionStorage indisponível — mantém splash */ }
+  </script>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>

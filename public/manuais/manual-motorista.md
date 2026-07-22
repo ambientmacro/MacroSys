@@ -1,90 +1,62 @@
-# Manual do Motorista — MACRO AMBIENTAL
+# Manual do Motorista â€” MACRO AMBIENTAL
 
-> Guia rápido para o motorista usar o sistema no celular.
-
----
-
-## 1. Como entrar (login)
-
-Na tela de login você pode usar **dois formatos**:
-
-- **E-mail** — ex.: `joao@macro.local`
-- **Matrícula de 7 dígitos** — ex.: `1234567` (seu número da empresa)
-
-O sistema detecta automaticamente. Se você digitar 7 dígitos, aparece:
-> ? Detectado login por matrícula (7 dígitos)
-
-Sua senha inicial foi entregue pelo seu Encarregado ou pelo Departamento Pessoal. Anote em local seguro.
-
-> **Esqueceu a senha?**
-> - Se você entra com **e-mail**: clique em "Esqueci a senha" na tela de login.
-> - Se entra com **matrícula**: avise o seu Encarregado ou o DP — eles vão criar um novo login.
-
-> **Acesso desativado?**
-> Procure o Departamento Pessoal. O acesso pode ser reativado.
+> VersÃ£o Fev/2026 Â· 1 pÃ¡gina Â· para o dia a dia no campo.
 
 ---
 
-## 2. Lançar o checklist diário
+## O que vocÃª faz no sistema
 
-Esse é o seu uso principal no sistema. Leva menos de 1 minuto.
-
-### Passo a passo
-
-1. Acesse o menu **"Novo Checklist Diário"** (ícone de prancheta).
-2. **Seu veículo aparece destacado** em um card azul-marinho no topo (TAG, placa, modelo). Se você tem mais de um veículo, escolhe no seletor.
-3. **O template já vem preenchido** (foi configurado pelo Adm de Frota).
-4. Veja os **itens listados**. A maioria já vem marcada como **Conforme** (verde) por padrão — você não precisa tocar.
-5. **Para itens com problema:** toque em **"Não Conforme"** (vermelho), preencha o motivo, anexe foto se for o caso.
-6. Adicione **Observações** se necessário (campo opcional no final).
-7. Toque em **"Enviar checklist"**.
-
-Pronto — aparece a mensagem *"Checklist registrado"* e seu Encarregado e o Adm de Frota recebem uma notificação.
+Preenche o **checklist diÃ¡rio** do seu veÃ­culo antes de iniciar a operaÃ§Ã£o â€” em menos de 1 minuto pelo celular.
 
 ---
 
-## 3. Veículo bloqueado? E agora?
+## Como entrar
 
-Se aparecer a mensagem vermelha:
-> ?? *"Este veículo ainda não tem Vistoria de Entrada. Apenas o Adm de Frota pode lançar a 1ª execução. Avise o gestor para liberar o equipamento."*
+1. Abra o link do sistema no navegador do celular.
+2. Na tela de login, digite:
+   - **E-mail** OU **matrÃ­cula de 7 dÃ­gitos** (o sistema detecta sozinho e mostra âœ“).
+3. Senha entregue pelo Encarregado/DP/TI.
+4. Toque em **Entrar**.
 
-Significa que o veículo é **novo no sistema** e ainda não foi liberado para uso. Procure o **Adm de Frota** — só ele faz essa primeira liberação.
-
-Depois que ele liberar, você pode lançar checklists normalmente.
-
----
-
-## 4. Meus Checklists
-
-Menu **"Meus Checklists"** mostra o histórico de tudo que você já enviou.
-
-- Toque em qualquer registro para ver detalhes.
-- Botão **"Imprimir / Salvar PDF"** abre a impressão do navegador — você pode salvar como PDF no celular.
-
-Útil quando o Encarregado pede comprovante de um checklist específico.
+> Esqueceu a senha? Se logou com **e-mail**, peÃ§a reset ao TI. Se logou com **matrÃ­cula**, procure o Encarregado â€” ele redefine.
 
 ---
 
-## 5. Dicas práticas
+## Suas telas
 
-- **Salve a página nos Favoritos** do navegador do celular. Funciona como app.
-- **Conexão lenta?** O checklist é leve, mas evite anexar muitas fotos por item se a internet estiver instável.
-- **Algo travou?** Feche e abra de novo. Os dados do checklist em andamento podem ser perdidos antes de **"Enviar"** — então preencha de uma vez só.
-- **Vai trocar de equipamento?** Avise o Adm de Frota antes — ele precisa atualizar quem é o motorista titular do veículo.
+### ğŸš— Novo Checklist (`/checklist/digital`)
+1. O sistema jÃ¡ mostra o seu **veÃ­culo titular** com foto/TAG/placa. Se vocÃª opera vÃ¡rios, escolha no dropdown.
+2. Se o veÃ­culo **nÃ£o tem Vistoria de Entrada ainda**, aparece uma mensagem amigÃ¡vel pedindo para o Adm de Frota liberar â€” **pare aqui e avise seu supervisor**.
+3. Itens jÃ¡ vÃªm marcados como **Conforme** (verde). Toque em **NÃ£o Conforme** (vermelho) sÃ³ no que estiver com problema.
+4. Se o item pedir **foto obrigatÃ³ria**, anexe (o botÃ£o de Enviar sÃ³ habilita depois).
+5. Preencha **ObservaÃ§Ãµes** (opcional).
+6. Toque em **Enviar checklist**.
+
+### ğŸ“‹ Meus Checklists (`/checklists`)
+HistÃ³rico dos seus checklists preenchidos. Toque em qualquer registro para ver detalhes e **imprimir/salvar em PDF**.
 
 ---
 
-## 6. Quem é quem (e quem te ajuda em cada situação)
+## Regras que vocÃª precisa saber
 
-| Situação | Quem procurar |
+| Regra | Por quÃª |
 |---|---|
-| Não consigo logar | DP ou Encarregado |
-| Veículo está bloqueado (mensagem vermelha) | Administrador de Frota |
-| Mudei de equipamento e o sistema não atualizou | Administrador de Frota |
-| Tenho um item que não estava no checklist | Segurança do Trabalho |
-| Mudei de equipe / cargo | DP |
-| Esqueci a senha (login por matrícula) | Encarregado ou DP |
+| Se marcar item crÃ­tico como **NÃ£o Conforme**, o veÃ­culo pode ser **bloqueado automaticamente**. Avise a Frota. | SeguranÃ§a operacional. |
+| Foto obrigatÃ³ria bloqueia o envio atÃ© vocÃª anexar. | Evita checklist incompleto. |
+| VocÃª sÃ³ vÃª **seus prÃ³prios** checklists. | Privacidade e escopo do seu trabalho. |
 
 ---
 
-**Bom trabalho e boa operação!**
+## FAQ rÃ¡pido
+
+**Meu veÃ­culo nÃ£o aparece.**
+PeÃ§a ao Adm de Frota para te vincular como Motorista Titular do equipamento.
+
+**A tela diz "Este veÃ­culo ainda nÃ£o tem Vistoria de Entrada".**
+O Adm de Frota precisa lanÃ§ar a 1Âª vistoria antes de vocÃª poder usar. Avise o gestor.
+
+**Instalar o app no celular?**
+Na tela de login, toque em **Instalar App** (Android/Chrome) ou siga as instruÃ§Ãµes para iOS.
+
+**Consigo baixar o manual completo?**
+Sim â€” na tela de login, botÃ£o **Baixar manual completo do sistema**.

@@ -1,138 +1,67 @@
-# Manual do Administrador de Frota ó MACRO AMBIENTAL
+# Manual do Administrador de Frota ‚Äî MACRO AMBIENTAL
 
-> Guia r·pido para quem gerencia veÌculos, custos e relatÛrios da frota.
-
----
-
-## Vis„o geral do seu papel
-
-VocÍ È o **dono operacional dos veÌculos**. Recebe o equipamento, libera para uso e acompanha os custos.
-
-Suas responsabilidades:
-
-1. **Configurar o veÌculo** apÛs a aprovaÁ„o do DP e da SeguranÁa.
-2. **Fazer a Vistoria de Entrada** (1™ execuÁ„o de checklist do veÌculo).
-3. **Vincular motorista titular** e **template padr„o** ao veÌculo.
-4. **Acompanhar relatÛrios** de custo, patrimÙnio, idade da frota e vencimentos.
-5. **Criar login** para motoristas da sua equipe (quando necess·rio).
-
-> VocÍ vÍ apenas os veÌculos e motoristas das suas equipes.
+> Vers√£o Fev/2026 ¬∑ 1 p√°gina ¬∑ foco em ve√≠culos, custos e vistoria de entrada.
 
 ---
 
-## 1. Lista de veÌculos
+## O que voc√™ faz no sistema
 
-Menu **"VeÌculos"**.
-
-Cada card mostra:
-- **TAG ∑ Placa** (chip azul-marinho quando h· placa)
-- Marca, modelo, ano
-- **Valor mensal de aluguel** + origem (prÛprio / alugado / prestaÁ„o)
-- **Alerta de CRLV** (badge ‚mbar = vencendo em ?30 dias; badge vermelho = vencido)
-- Status: PR…-CADASTRADO, AGUARDANDO ATIVA«√O, ATIVO, INATIVO
-
-Toque em qualquer card para abrir o detalhe.
+- Recebe **Indica√ß√µes** dos Encarregados e converte em **Requerimentos** (Wizard).
+- Aprova/configura ve√≠culos aprovados pelo DP.
+- Lan√ßa a **Vistoria de Entrada** (1¬™ execu√ß√£o do checklist).
+- Acompanha custos, relat√≥rios da frota e importa dados do **GETRAK**.
 
 ---
 
-## 2. Configurar um veÌculo novo
+## Suas telas
 
-Menu **"VeÌculos"** ? toque no card ? **"Editar"**.
+### üì© Indica√ß√µes (`/indicacoes`)
+Lista das indica√ß√µes abertas pelos Encarregados. Bot√£o **"Converter em Requerimento"** abre o Wizard j√° com o contexto (`?fromIndicacao=<id>`).
 
-Existem **3 blocos** para preencher:
+### üßô Wizard de Requerimento (`/requerimentos/novo`)
+7 etapas: Tipo ‚Üí Dados ‚Üí Adicionais ‚Üí Documentos ‚Üí Detalhes ‚Üí Revis√£o ‚Üí Conclus√£o. Fluxo **em cascata**: **Porte ‚Üí Categoria ‚Üí Subtipo ‚Üí Tipo** (ex.: Pesado ‚Üí Caminh√µes ‚Üí Toco ‚Üí Basculante). Regras cr√≠ticas:
+- Ano fabrica√ß√£o **sempre obrigat√≥rio**.
+- Retroescavadeira, Escavadeira, Rolo Compactador ‚Üí **Hor√≠metro**. Demais ‚Üí **Quilometragem**.
+- Origem "Alugado *" ‚Üí some o input manual de valor e aparece **Tipo de Ve√≠culo** (cat√°logo do Medi√ß√£o) que puxa valores e grava snapshot imut√°vel.
+- Dados banc√°rios: **PIX** OU **Banco+Ag√™ncia+Conta** (uma das duas combina√ß√µes obrigat√≥ria).
 
-### Bloco 1 ó IdentificaÁ„o
-- TAG (patrimonial)
-- **Placa** (opcional ó equipamentos sem emplacamento ficam vazios; quando preenchida, È ˙nica no sistema)
-- Marca / Modelo / Ano
+### üöó Ve√≠culos (`/veiculos` e `/veiculos/:id`)
+Lista com placa, TAG, alertas visuais de CRLV. Detalhe traz 3 blocos:
+1. **Identifica√ß√£o** (TAG, placa, marca, modelo, ano).
+2. **Custos e Gest√£o** ‚Äî valor mensal, patrim√¥nio, aquisi√ß√£o, CRLV, equipe respons√°vel.
+3. **V√≠nculos operacionais** ‚Äî motorista titular + template de checklist.
 
-### Bloco 2 ó Custos e Gest„o (esta È a parte que alimenta os relatÛrios)
-- **Origem:** prÛprio / alugado / prestaÁ„o de serviÁo
-- **Valor mensal de aluguel** (R$) ó **OBRIGAT”RIO**, mesmo para veÌculos prÛprios (auto-aluguel interno para fins de relatÛrio de custo).
-- **Valor de patrimÙnio** (R$) ó usado em depreciaÁ„o dos prÛprios.
-- **Data de aquisiÁ„o** ó usado para c·lculo de idade da frota.
-- **Vencimento do CRLV** ó gera os alertas no Dashboard e nos RelatÛrios.
-- **Equipe respons·vel** ó combina com a estrutura criada pelo DP.
+### üìã Vistoria de Entrada (`/checklist/manual`)
+Quando o ve√≠culo estiver `PENDING_ACTIVATION`, voc√™ lan√ßa a **1¬™ execu√ß√£o** ‚Äî banner azul confirma "1¬™ execu√ß√£o deste ve√≠culo ‚Äî Vistoria de Entrada" e o bot√£o vira "Registrar Vistoria de Entrada". A partir da√≠ o motorista pode operar.
 
-### Bloco 3 ó VÌnculos operacionais
-- **Motorista titular** ó quem È o "dono" desse equipamento no dia a dia. Quando ele logar, o veÌculo j· vem auto-selecionado no checklist.
-- **Template de checklist** ó escolha o template criado pela SeguranÁa do Trabalho (ex.: "Retroescavadeira", "Caminh„o Toco").
+### üìä Relat√≥rios (`/frota/relatorios` e `/frota/custos`)
+KPIs: total, patrim√¥nio, custo mensal, idade m√©dia. Vencimentos cr√≠ticos de CRLV. Aloca√ß√£o por equipe. Custos: agregados por porte, tipo, equipe.
 
-**Salve.**
+### üõ∞ Importa√ß√£o GETRAK (`/getrak`)
+Faz upload do Excel do sistema terceiro (deslocamentos + paradas). Relaciona automaticamente pela placa, mostra hora total, ocioso, quilometragem, locais e coordenadas.
 
----
-
-## 3. Fazer a Vistoria de Entrada (1™ execuÁ„o)
-
-ApÛs configurar o veÌculo, vocÍ precisa fazer a **Vistoria de Entrada** ó a primeira execuÁ„o do checklist desse veÌculo.
-
-> SÛ o Adm de Frota (ou Admin TI) pode fazer essa primeira execuÁ„o. Motorista e Encarregado ficam bloqueados atÈ vocÍ liberar.
-
-Menu **"LanÁar Checklist (papel)"**.
-
-1. Selecione o veÌculo recÈm-configurado.
-2. O sistema detecta automaticamente que È a 1™ execuÁ„o e mostra:
-   > ?? *"1™ execuÁ„o deste veÌculo ó Vistoria de Entrada. Esta È a ˙nica vez que o checklist È lanÁado pelo Adm de Frota..."*
-3. Preencha os itens do template.
-4. Clique em **"Registrar Vistoria de Entrada"**.
-
-A partir desse momento, o veÌculo est· liberado. Motorista e Encarregado podem lanÁar checklist di·rio normalmente.
+### üßæ Painel de Checklists (`/checklists/painel`)
+Contadores em tempo real de todos os ve√≠culos ativos.
 
 ---
 
-## 4. RelatÛrios da Frota
+## Regras que voc√™ precisa saber
 
-Menu **"RelatÛrios Frota"**.
-
-### KPIs no topo (4 cards):
-
-- **Total de veÌculos** ó separados por origem (prÛprios / alugados / prestaÁ„o)
-- **PatrimÙnio total (prÛprios)** ó soma do valor de patrimÙnio dos veÌculos prÛprios
-- **Custo mensal de aluguel** ó terceiros + auto-aluguel interno (soma de tudo)
-- **Idade mÈdia da frota** ó calculada com base em ano de fabricaÁ„o ou data de aquisiÁ„o
-
-### SeÁ„o "CRLV ó Vencimentos crÌticos"
-
-Lista os veÌculos com CRLV vencido (vermelho) ou vencendo em ?30 dias (‚mbar). Cada item linka direto para o detalhe do veÌculo. Use isso para **gerar a fila de licenciamentos pendentes**.
-
-### SeÁ„o "AlocaÁ„o por equipe"
-
-Mostra quantos veÌculos cada equipe tem e quanto custam por mÍs (soma do valor de aluguel). ⁄til para alocaÁ„o de orÁamento e conferÍncia operacional.
-
----
-
-## 5. Criar login de motorista (quando preciso)
-
-Menu **"Criar Login Motorista"**.
-
-Mesma lÛgica do Encarregado: vÍ motoristas **das suas equipes** que est„o aprovados pelo DP mas sem login.
-
-Clique em **"Criar login"** ? escolha **E-mail** ou **MatrÌcula 7 dÌgitos** ? defina senha ? entregue.
-
----
-
-## 6. Imprimir relatÛrio
-
-A p·gina de RelatÛrios n„o tem bot„o de exportaÁ„o direta. Para gerar um documento:
-
-1. Abra a p·gina `/frota/relatorios`.
-2. Use **Ctrl+P** (Windows) ou **Cmd+P** (Mac).
-3. Salve como PDF na impress„o do navegador.
-
-> ExportaÁ„o para Excel/CSV est· no roadmap.
-
----
-
-## 7. Quem È quem
-
-| SituaÁ„o | Quem procurar |
+| Regra | Por qu√™ |
 |---|---|
-| VeÌculo recÈm-aprovado precisa de template | Pedir SeguranÁa do Trabalho criar/vincular |
-| Motorista n„o aparece no select de titular | Verificar com DP se foi aprovado e incluÌdo na equipe |
-| CRLV vencendo em massa | VocÍ decide priorizaÁ„o do licenciamento |
-| Equipe nova surgindo na operaÁ„o | Pedir DP criar em `/teams` |
-| Erros no sistema | Administrador TI |
+| N√£o altere **Origem** e **Valor de aluguel** ap√≥s o ve√≠culo ativo ‚Äî quem faz isso √© o **Medi√ß√£o**. | Trilha de custo confi√°vel. |
+| S√≥ voc√™ (ou Admin) pode lan√ßar a **Vistoria de Entrada**. | Garante inspe√ß√£o antes do uso. |
+| Motorista titular deve estar aprovado pelo DP. | Fluxo formal de autoriza√ß√£o. |
 
 ---
 
-**Bom trabalho e boa gest„o da frota!**
+## FAQ r√°pido
+
+**Vistoria de Entrada n√£o aparece o bot√£o certo.**
+Confirme que o ve√≠culo est√° com status `PENDING_ACTIVATION` (aprovado pelo DP + Seguran√ßa).
+
+**Custo do aluguel est√° vindo bloqueado.**
+Se a origem √© *Alugado*, o valor vem do cat√°logo do Medi√ß√£o ‚Äî v√° em `/tipos-veiculo` (visualiza√ß√£o).
+
+**GETRAK importou dados errados.**
+Confirme se as placas do relat√≥rio existem cadastradas ‚Äî placas n√£o encontradas ficam como TAG.

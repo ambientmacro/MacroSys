@@ -1,6 +1,6 @@
 import "@/App.css";
 import "@/index.css";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -174,20 +174,46 @@ function App() {
 export default App;
 
 /**
- * SplashController — remove o splash HTML inicial (index.html) quando o
- * AuthContext resolve o estado de autenticação. Como o AuthProvider aguarda
- * o `onAuthStateChanged` do Firebase, isso garante que o usuário só vê a
- * tela de login/dashboard quando o app está de fato pronto para interagir.
+ * SplashController — decide QUANDO e COMO remover o splash HTML inicial.
+ * Regras (pedidas pelo usuário):
+ *   • Sessão já viu o splash (`sessionStorage`): já foi escondido pelo script
+ *     inline do index.html — nada a fazer.
+ *   • Firebase resolveu `loading=false`:
+ *       - Se há sessão logada (`firebaseUser`): some rápido (~200 ms) — o
+ *         usuário logado não deve esperar.
+ *       - Se NÃO há sessão: aguarda o mínimo de 2 s desde o mount para
+ *         evitar que a tela de login "pisque" em cold-start rápido.
+ * Grava `sessionStorage["macro-splash-seen"]=1` ao dismissar, para não
+ * reaparecer em F5 / navegações da mesma sessão.
  */
 function SplashController() {
-  const { loading } = useAuth();
+  const { loading, firebaseUser } = useAuth();
+  const mountedAtRef = useRef(Date.now());
+
   useEffect(() => {
     if (loading) return;
-    const s = document.getElementById("app-splash");
-    if (!s) return;
-    s.classList.add("is-out");
-    const t = setTimeout(() => s.remove(), 450);
+    const el = document.getElementById("app-splash");
+    if (!el) return;
+    // Já foi escondido pelo script inline (sessão repetida): só grava a flag
+    // e sai — evita re-adicionar transição desnecessária.
+    if (el.classList.contains("is-seen")) {
+      try { sessionStorage.setItem("macro-splash-seen", "1"); } catch (e) { /* noop */ }
+      return;
+    }
+
+    const MIN_ANON_MS = 2000;   // tempo mínimo se usuário anônimo (evita piscar)
+    const QUICK_MS = 200;       // se já logado, some rápido
+    const elapsed = Date.now() - mountedAtRef.current;
+    const wait = firebaseUser ? Math.max(0, QUICK_MS - elapsed)
+      : Math.max(0, MIN_ANON_MS - elapsed);
+
+    const t = setTimeout(() => {
+      el.classList.add("is-out");
+      try { sessionStorage.setItem("macro-splash-seen", "1"); } catch (e) { /* noop */ }
+      setTimeout(() => el.remove(), 450);
+    }, wait);
     return () => clearTimeout(t);
-  }, [loading]);
+  }, [loading, firebaseUser]);
+
   return null;
 }

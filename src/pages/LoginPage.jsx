@@ -176,9 +176,12 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Manual público — disponível antes do login para consulta geral. */}
+          {/* Manual público — disponível antes do login para consulta geral.
+              Aponta para o visualizador HTML (viewer.html) que faz fetch do
+              markdown com UTF-8 explícito — sem depender do Content-Type do
+              server (evita mojibake em produção). */}
           <a
-            href="/manuais/manual-completo.md"
+            href="/manuais/viewer.html?doc=manual-completo"
             target="_blank"
             rel="noopener noreferrer"
             data-testid="login-manual-link"
