@@ -1,54 +1,54 @@
-# Manual do Perfil Performance â€” MACRO AMBIENTAL
+# Manual do Perfil Performance — MACRO AMBIENTAL
 
-> VersÃ£o Fev/2026 Â· 1 pÃ¡gina Â· foco em equipes e cargos.
+> Versão Fev/2026 · 1 página · foco em equipes e cargos.
 
 ---
 
-## O que vocÃª faz no sistema
+## O que você faz no sistema
 
-- Gerencia o **catÃ¡logo de FunÃ§Ãµes / Cargos** (o Wizard puxa as funÃ§Ãµes ativas).
+- Gerencia o **catálogo de Funções / Cargos** (o Wizard puxa as funções ativas).
 - Estrutura organizacional das **Equipes** (junto com o DP).
 
 ---
 
 ## Suas telas
 
-### ðŸ§¾ FunÃ§Ãµes / Cargos (`/funcoes`)
-CRUD do catÃ¡logo:
-- **Nome** ("Operador de Retroescavadeira", "Motorista CaminhÃ£o Muck", "Ajudante de Obras")
-- **DescriÃ§Ã£o** opcional
-- **Ativo** (sim/nÃ£o)
+### ?? Funções / Cargos (`/funcoes`)
+CRUD do catálogo:
+- **Nome** ("Operador de Retroescavadeira", "Motorista Caminhão Muck", "Ajudante de Obras")
+- **Descrição** opcional
+- **Ativo** (sim/não)
 
-> Quando o Encarregado abre a IndicaÃ§Ã£o ou o Frota abre o Requerimento de motorista, o campo **FunÃ§Ã£o** vira um `<select>` puxando as funÃ§Ãµes ativas daqui. Nada de digitar cargo em texto livre.
+> Quando o Encarregado abre a Indicação ou o Frota abre o Requerimento de motorista, o campo **Função** vira um `<select>` puxando as funções ativas daqui. Nada de digitar cargo em texto livre.
 
-### ðŸ‘¥ Equipes (`/teams`)
-Acesso compartilhado com o DP. VocÃª cuida da parte organizacional (definir encarregado + motoristas que a compÃµem).
+### ?? Equipes (`/teams`)
+Acesso compartilhado com o DP. Você cuida da parte organizacional (definir encarregado + motoristas que a compõem).
 
-### ðŸ“Š Frota Custos (`/frota/custos`)
-VisualizaÃ§Ã£o em modo consulta â€” para vocÃª acompanhar os custos por equipe/tipo.
+### ?? Frota Custos (`/frota/custos`)
+Visualização em modo consulta — para você acompanhar os custos por equipe/tipo.
 
-### ðŸ“Š RelatÃ³rios (`/frota/relatorios`)
+### ?? Relatórios (`/frota/relatorios`)
 KPIs gerais em consulta.
 
 ---
 
-## Regras que vocÃª precisa saber
+## Regras que você precisa saber
 
-| Regra | Por quÃª |
+| Regra | Por quê |
 |---|---|
-| FunÃ§Ã£o inativa some do combo do Wizard. | Evita cadastrar motorista em cargo obsoleto. |
-| Excluir funÃ§Ã£o nÃ£o deleta motoristas com aquele cargo. | Preserva histÃ³rico. |
-| VocÃª **nÃ£o** aprova Requerimentos â€” quem aprova Ã© DP + SeguranÃ§a. | PapÃ©is separados. |
+| Função inativa some do combo do Wizard. | Evita cadastrar motorista em cargo obsoleto. |
+| Excluir função não deleta motoristas com aquele cargo. | Preserva histórico. |
+| Você **não** aprova Requerimentos — quem aprova é DP + Segurança. | Papéis separados. |
 
 ---
 
-## FAQ rÃ¡pido
+## FAQ rápido
 
-**Preciso renomear um cargo (ex.: "Operador Retro" â†’ "Operador Retroescavadeira").**
-Edite direto â€” a alteraÃ§Ã£o aparece em novos requerimentos. Motoristas antigos mantÃªm o nome que foi gravado no snapshot.
+**Preciso renomear um cargo (ex.: "Operador Retro" ? "Operador Retroescavadeira").**
+Edite direto — a alteração aparece em novos requerimentos. Motoristas antigos mantêm o nome que foi gravado no snapshot.
 
 **Consigo ver a produtividade por cargo?**
-Ainda nÃ£o â€” no roadmap. Hoje vocÃª acompanha via `/frota/custos` e `/frota/relatorios`.
+Ainda não — no roadmap. Hoje você acompanha via `/frota/custos` e `/frota/relatorios`.
 
 **Quero criar uma nova equipe.**
-VÃ¡ em `/teams` â†’ **Nova Equipe** â†’ nome + encarregado + membros. `teamId` propaga automaticamente.
+Vá em `/teams` ? **Nova Equipe** ? nome + encarregado + membros. `teamId` propaga automaticamente.

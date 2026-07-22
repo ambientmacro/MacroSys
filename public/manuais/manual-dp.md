@@ -1,60 +1,60 @@
-# Manual do Departamento Pessoal (DP) â€” MACRO AMBIENTAL
+# Manual do Departamento Pessoal (DP) — MACRO AMBIENTAL
 
-> VersÃ£o Fev/2026 Â· 1 pÃ¡gina Â· foco em aprovar pessoas e organizar equipes.
+> Versão Fev/2026 · 1 página · foco em aprovar pessoas e organizar equipes.
 
 ---
 
-## O que vocÃª faz no sistema
+## O que você faz no sistema
 
-- **Primeiro gargalo** do fluxo de Requerimento (aprova motoristas e veÃ­culos).
-- Estrutura as **Equipes** (encarregado + motoristas + veÃ­culos).
-- Cria/edita/desativa usuÃ¡rios (coadministrador do sistema).
+- **Primeiro gargalo** do fluxo de Requerimento (aprova motoristas e veículos).
+- Estrutura as **Equipes** (encarregado + motoristas + veículos).
+- Cria/edita/desativa usuários (coadministrador do sistema).
 - Configura os **Temas visuais** por perfil.
 
 ---
 
 ## Suas telas
 
-### ðŸ“¥ Requerimentos (`/requerimentos`)
-Lista com status Pendente / Em AnÃ¡lise / Aprovado etc. Aberta a ficha:
-- **Motorista**: confere ASO, CNH, contrato. **Aprova** â†’ vira `NO_LOGIN_USER`; ou **Reprova**.
-- **VeÃ­culo**: **Aprova** â†’ vai para SeguranÃ§a.
-- **VeÃ­culo + Motorista**: aprova â†’ segue para SeguranÃ§a; motorista ativa quando a vistoria aprovar.
+### ?? Requerimentos (`/requerimentos`)
+Lista com status Pendente / Em Análise / Aprovado etc. Aberta a ficha:
+- **Motorista**: confere ASO, CNH, contrato. **Aprova** ? vira `NO_LOGIN_USER`; ou **Reprova**.
+- **Veículo**: **Aprova** ? vai para Segurança.
+- **Veículo + Motorista**: aprova ? segue para Segurança; motorista ativa quando a vistoria aprovar.
 
-### ðŸ‘¥ Equipes (`/teams`)
-Nova Equipe â†’ define nome, encarregado responsÃ¡vel, motoristas membros (blocos "com login" e "aprovados sem login"). Ao salvar, o `teamId` propaga.
+### ?? Equipes (`/teams`)
+Nova Equipe ? define nome, encarregado responsável, motoristas membros (blocos "com login" e "aprovados sem login"). Ao salvar, o `teamId` propaga.
 
-> A partir daqui, o Encarregado sÃ³ vÃª a prÃ³pria equipe.
+> A partir daqui, o Encarregado só vê a própria equipe.
 
-### ðŸ‘¤ UsuÃ¡rios (`/users`)
-Acesso total: criar do zero (qualquer perfil), editar dados, ativar/desativar, criar login para motoristas aprovados (E-mail ou MatrÃ­cula 7 dÃ­gitos).
+### ?? Usuários (`/users`)
+Acesso total: criar do zero (qualquer perfil), editar dados, ativar/desativar, criar login para motoristas aprovados (E-mail ou Matrícula 7 dígitos).
 
-### ðŸŽ¨ Temas (`/temas`)
-Configura cores da Sidebar e backgrounds **por perfil de acesso**. O que vocÃª definir para Motorista, por exemplo, serÃ¡ aplicado quando qualquer Motorista logar.
+### ?? Temas (`/temas`)
+Configura cores da Sidebar e backgrounds **por perfil de acesso**. O que você definir para Motorista, por exemplo, será aplicado quando qualquer Motorista logar.
 
-### ðŸ“„ Contrato (auto-gerado)
+### ?? Contrato (auto-gerado)
 Ao aprovar Motorista com Contrato, o DP pode gerar um Word/PDF com todos os dados do Requerimento e assinaturas.
 
 ---
 
-## Regras que vocÃª precisa saber
+## Regras que você precisa saber
 
-| Regra | Por quÃª |
+| Regra | Por quê |
 |---|---|
-| Sem **cadastro direto** de motorista/veÃ­culo â€” sempre via Requerimento. | Trilha auditÃ¡vel. |
-| Anexo de contrato **obrigatÃ³rio** ao aprovar motorista. | FormalizaÃ§Ã£o legal. |
-| Contratos precisam de **revisÃ£o anual** (a definir alerta). | Compliance. |
-| SÃ³ vocÃª (e Admin) pode editar dados crÃ­ticos do usuÃ¡rio. | Sensibilidade dos dados pessoais. |
+| Sem **cadastro direto** de motorista/veículo — sempre via Requerimento. | Trilha auditável. |
+| Anexo de contrato **obrigatório** ao aprovar motorista. | Formalização legal. |
+| Contratos precisam de **revisão anual** (a definir alerta). | Compliance. |
+| Só você (e Admin) pode editar dados críticos do usuário. | Sensibilidade dos dados pessoais. |
 
 ---
 
-## FAQ rÃ¡pido
+## FAQ rápido
 
-**Motorista aprovado nÃ£o aparece no checklist.**
-Confirme se ele jÃ¡ foi vinculado a alguma **Equipe** (`/teams`) e se o Encarregado o vinculou a um veÃ­culo.
+**Motorista aprovado não aparece no checklist.**
+Confirme se ele já foi vinculado a alguma **Equipe** (`/teams`) e se o Encarregado o vinculou a um veículo.
 
-**Preciso ver histÃ³rico de aprovaÃ§Ãµes.**
-PeÃ§a ao TI para exportar a coleÃ§Ã£o `requerimentos` no BackupAdmin â€” filtro por status.
+**Preciso ver histórico de aprovações.**
+Peça ao TI para exportar a coleção `requerimentos` no BackupAdmin — filtro por status.
 
 **Como redefino senha de motorista?**
-Se for e-mail â†’ link "Esqueci senha" no Firebase. Se for matrÃ­cula â†’ o Encarregado/DP cria novo login com nova senha.
+Se for e-mail ? link "Esqueci senha" no Firebase. Se for matrícula ? o Encarregado/DP cria novo login com nova senha.

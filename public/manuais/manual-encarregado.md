@@ -1,60 +1,60 @@
-# Manual do Encarregado â€” MACRO AMBIENTAL
+# Manual do Encarregado — MACRO AMBIENTAL
 
-> VersÃ£o Fev/2026 Â· 1 pÃ¡gina Â· foco na gestÃ£o da equipe.
+> Versão Fev/2026 · 1 página · foco na gestão da equipe.
 
 ---
 
-## O que vocÃª faz no sistema
+## O que você faz no sistema
 
-- Abre **IndicaÃ§Ãµes** de necessidade (motorista/veÃ­culo) â€” o Frota converte em Requerimento formal.
+- Abre **Indicações** de necessidade (motorista/veículo) — o Frota converte em Requerimento formal.
 - Acompanha os **checklists da sua equipe**.
-- LanÃ§a checklist manual quando o motorista respondeu no papel.
-- Cria login para motoristas da sua equipe jÃ¡ aprovados pelo DP.
+- Lança checklist manual quando o motorista respondeu no papel.
+- Cria login para motoristas da sua equipe já aprovados pelo DP.
 
 ---
 
 ## Suas telas
 
-### ðŸ“© IndicaÃ§Ãµes (`/indicacoes` e `/indicacoes/nova`)
-VocÃª **nÃ£o cria Requerimento diretamente** â€” abre uma **IndicaÃ§Ã£o de necessidade** contando o que precisa (novo motorista, veÃ­culo especÃ­fico, etc.). O Adm de Frota recebe e converte em Requerimento formal. Status: ABERTA / CONVERTIDA / DESCARTADA.
+### ?? Indicações (`/indicacoes` e `/indicacoes/nova`)
+Você **não cria Requerimento diretamente** — abre uma **Indicação de necessidade** contando o que precisa (novo motorista, veículo específico, etc.). O Adm de Frota recebe e converte em Requerimento formal. Status: ABERTA / CONVERTIDA / DESCARTADA.
 
-### ðŸ“‹ Meus Checklists (`/checklists`)
-Aparecem automaticamente **sÃ³ os da sua equipe** (banner azul confirma "Filtrando pela sua equipe: <nome> Â· N membros"). Toque em qualquer para ver detalhes + imprimir PDF.
+### ?? Meus Checklists (`/checklists`)
+Aparecem automaticamente **só os da sua equipe** (banner azul confirma "Filtrando pela sua equipe: <nome> · N membros"). Toque em qualquer para ver detalhes + imprimir PDF.
 
-### ðŸ§¾ Painel de Checklists (`/checklists/painel`)
-Contadores em tempo real: **Total ativo Â· OK Â· Pendentes Â· NÃ£o-conformes** â€” sÃ³ dos veÃ­culos da sua equipe.
+### ?? Painel de Checklists (`/checklists/painel`)
+Contadores em tempo real: **Total ativo · OK · Pendentes · Não-conformes** — só dos veículos da sua equipe.
 
-### ðŸ“ Checklist Manual (`/checklist/manual`)
+### ?? Checklist Manual (`/checklist/manual`)
 Quando o motorista preencheu no papel:
 1. Selecione o motorista da sua equipe.
-2. VeÃ­culo padrÃ£o vem sugerido.
+2. Veículo padrão vem sugerido.
 3. Preencha item a item.
 4. Salvar.
 
-### ðŸ‘¥ UsuÃ¡rios (`/users`) â€” criar login de motorista
-No bloco **"Aprovados pelo DP Â· sem login"**, encontre o motorista da sua equipe â†’ **Criar login** â†’ escolha *E-mail* ou *MatrÃ­cula 7 dÃ­gitos* â†’ defina senha â‰¥ 6 caracteres â†’ entregue ao motorista.
+### ?? Usuários (`/users`) — criar login de motorista
+No bloco **"Aprovados pelo DP · sem login"**, encontre o motorista da sua equipe ? **Criar login** ? escolha *E-mail* ou *Matrícula 7 dígitos* ? defina senha ? 6 caracteres ? entregue ao motorista.
 
-> VocÃª sÃ³ vÃª motoristas da **sua equipe** â€” o DP monta a equipe em `/teams`.
+> Você só vê motoristas da **sua equipe** — o DP monta a equipe em `/teams`.
 
 ---
 
-## Regras que vocÃª precisa saber
+## Regras que você precisa saber
 
-| Regra | Por quÃª |
+| Regra | Por quê |
 |---|---|
-| NÃ£o Ã© possÃ­vel ver dados de outras equipes. | Cada Encarregado gere sÃ³ a prÃ³pria. |
-| SÃ³ cria login para motoristas **jÃ¡ aprovados pelo DP**. | Garante autorizaÃ§Ã£o formal antes do acesso. |
-| IndicaÃ§Ã£o â‰  Requerimento. | VocÃª indica; Frota formaliza no fluxo. |
+| Não é possível ver dados de outras equipes. | Cada Encarregado gere só a própria. |
+| Só cria login para motoristas **já aprovados pelo DP**. | Garante autorização formal antes do acesso. |
+| Indicação ? Requerimento. | Você indica; Frota formaliza no fluxo. |
 
 ---
 
-## FAQ rÃ¡pido
+## FAQ rápido
 
-**Motorista aprovado nÃ£o aparece em "Criar Login".**
-Confirma com o DP se ele foi vinculado Ã  sua equipe (`/teams`).
+**Motorista aprovado não aparece em "Criar Login".**
+Confirma com o DP se ele foi vinculado à sua equipe (`/teams`).
 
 **Foto do checklist sumiu ao imprimir.**
-Fotos ficam em Base64 no doc â€” imprime direto do sistema (Ctrl+P) que aparece.
+Fotos ficam em Base64 no doc — imprime direto do sistema (Ctrl+P) que aparece.
 
 **Quero exportar em Excel a lista de checklists.**
-PeÃ§a ao TI (BackupAdmin) â€” ele exporta com filtros por role e formato XLSX+ZIP (com mÃ­dias).
+Peça ao TI (BackupAdmin) — ele exporta com filtros por role e formato XLSX+ZIP (com mídias).

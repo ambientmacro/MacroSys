@@ -10,7 +10,32 @@ export default defineConfig({
     basicSsl(), // ✅ adiciona https
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "icons/apple-touch-icon.png"],
+      includeAssets: [
+        "favicon.ico",
+        "icons/apple-touch-icon.png",
+        // Manuais + viewer HTML precisam ser precached para funcionar offline
+        // e para o SW NÃO servir o index.html do SPA no lugar.
+        "manuais/viewer.html",
+        "manuais/manual-completo.md",
+        "manuais/manual-motorista.md",
+        "manuais/manual-encarregado.md",
+        "manuais/manual-frota.md",
+        "manuais/manual-dp.md",
+        "manuais/manual-seguranca.md",
+        "manuais/manual-medicao.md",
+        "manuais/manual-performance.md",
+        "manuais/manual-admin.md",
+      ],
+      workbox: {
+        // O default do Workbox faz NavigationRoute → index.html para QUALQUER
+        // request de navegação HTML. Isso quebra links diretos para
+        // /manuais/viewer.html (SW devolve o SPA, o React manda pro login).
+        // A denylist abaixo faz o SW deixar essas rotas passarem direto para
+        // o servidor estático (Render/Vite), que serve o HTML/MD reais.
+        navigateFallbackDenylist: [/^\/manuais\//],
+        // Também precacheia .md além dos defaults (js/css/html/png/svg/ico).
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest,md}"],
+      },
       manifest: {
         name: "MACRO AMBIENTAL — Frota",
         short_name: "Macro Frota",
