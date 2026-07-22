@@ -2,9 +2,29 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { normalizeLoginIdentifier, isMatricula } from "../lib/auth-identifier";
-import { Drop, Truck, ShieldCheck, ClipboardText, Info } from "@phosphor-icons/react";
+import {
+  Drop, Truck, ShieldCheck, ClipboardText, Info,
+  UsersThree, FileText, MagnifyingGlass, ChartLine, Package,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 import InstallAppButton from "../components/InstallAppButton";
+
+// Cartões de features exibidos no painel esquerdo — refletem o que o sistema
+// já entrega hoje. Mantido como constante para facilitar futuras adições.
+const FEATURES = [
+  { i: FileText, l: "Requerimentos", c: "from-[#3B82F6] to-[#2563EB]" },
+  { i: Truck, l: "Frota", c: "from-[#0EA5E9] to-[#0369A1]" },
+  { i: UsersThree, l: "Motoristas", c: "from-[#8B5CF6] to-[#6D28D9]" },
+  { i: ShieldCheck, l: "Vistoria", c: "from-[#10B981] to-[#059669]" },
+  { i: ClipboardText, l: "Checklists", c: "from-[#F59E0B] to-[#D97706]" },
+  { i: MagnifyingGlass, l: "GETRAK", c: "from-[#EC4899] to-[#BE185D]" },
+  { i: ChartLine, l: "Custos", c: "from-[#22C55E] to-[#15803D]" },
+  { i: Package, l: "Backup", c: "from-[#F97316] to-[#C2410C]" },
+];
+
+// Logo composta com as três marcas do grupo — servida como asset público.
+const GROUP_LOGOS_URL =
+  "https://customer-assets-jt897jd0.emergentagent.net/job_frota-operacional/artifacts/v0azwjyo_3%20logos.jpg.jpeg";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -40,9 +60,10 @@ export default function LoginPage() {
         <div className="absolute inset-0 opacity-20" style={{
           backgroundImage: "radial-gradient(circle at 20% 30%, #3B82F6 0%, transparent 50%), radial-gradient(circle at 80% 70%, #2563EB 0%, transparent 50%)",
         }} />
-        <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
+        <div className="relative z-10 flex flex-col justify-between p-10 xl:p-12 text-white w-full">
+          {/* Cabeçalho */}
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-md bg-gradient-to-br from-[#3B82F6] to-[#1D4ED8] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-md bg-gradient-to-br from-[#3B82F6] to-[#1D4ED8] flex items-center justify-center shadow-lg shadow-blue-900/30">
               <Drop size={26} weight="fill" />
             </div>
             <div>
@@ -50,29 +71,40 @@ export default function LoginPage() {
               <div className="text-[10px] uppercase tracking-[0.3em] text-white/60 font-bold mt-1">Engenharia · Saneamento</div>
             </div>
           </div>
+
+          {/* Bloco central */}
           <div>
             <h1 className="font-[Outfit,sans-serif] text-4xl xl:text-5xl font-black tracking-tight leading-tight">
-              Gestão operacional<br />de frota e segurança.
+              Gestão operacional<br />de frota, segurança e pessoas.
             </h1>
-            <p className="text-base text-white/80 mt-4 max-w-md leading-relaxed">
-              Fluxos de requerimento, vistoria de entrada, checklists digital e manual — tudo no mesmo sistema.
+            <p className="text-base text-white/80 mt-4 max-w-lg leading-relaxed">
+              Requerimentos, vistoria de entrada, checklists digital e manual, importação GETRAK, custos, backup e temas — tudo integrado num só sistema.
             </p>
-            <div className="grid grid-cols-3 gap-4 mt-10 max-w-md">
-              {[
-                { i: Truck, l: "Frota", c: "from-[#3B82F6] to-[#2563EB]" },
-                { i: ShieldCheck, l: "Segurança", c: "from-[#10B981] to-[#059669]" },
-                { i: ClipboardText, l: "Checklists", c: "from-[#F59E0B] to-[#D97706]" },
-              ].map(({ i: Ic, l, c }) => (
-                <div key={l} className="border border-white/20 rounded-md p-4 backdrop-blur-sm bg-white/5">
+            <div className="grid grid-cols-4 gap-3 mt-8 max-w-xl">
+              {FEATURES.map(({ i: Ic, l, c }) => (
+                <div key={l} className="border border-white/15 rounded-md p-3 backdrop-blur-sm bg-white/5 hover:bg-white/10 transition-colors" data-testid={`login-feat-${l.toLowerCase()}`}>
                   <div className={`w-8 h-8 rounded bg-gradient-to-br ${c} flex items-center justify-center`}>
-                    <Ic size={18} weight="bold" />
+                    <Ic size={16} weight="bold" />
                   </div>
-                  <div className="mt-3 text-xs uppercase tracking-[0.2em] font-bold">{l}</div>
+                  <div className="mt-2.5 text-[10px] uppercase tracking-[0.15em] font-bold leading-tight">{l}</div>
                 </div>
               ))}
             </div>
           </div>
-          <div className="text-xs uppercase tracking-[0.25em] text-white/40">v1.0 · Operacional</div>
+
+          {/* Rodapé — Grupo empresarial */}
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-white/50 mb-2">Grupo empresarial</div>
+            <div className="bg-white rounded-md px-4 py-3 inline-flex items-center max-w-md" data-testid="login-group-logos">
+              <img
+                src={GROUP_LOGOS_URL}
+                alt="Grupo Macro · Dinâmica Construções · RC Silva Engenharia"
+                className="h-16 xl:h-20 w-auto object-contain"
+                loading="lazy"
+              />
+            </div>
+            <div className="mt-4 text-[10px] uppercase tracking-[0.25em] text-white/40">v1.0 · Operacional</div>
+          </div>
         </div>
       </div>
 
@@ -152,8 +184,19 @@ export default function LoginPage() {
             data-testid="login-manual-link"
             className="mt-3 flex items-center justify-center gap-2 text-xs uppercase tracking-[0.15em] font-bold text-[#2563EB] hover:text-[#1D4ED8] transition-colors py-2"
           >
-            📘 Baixar manual completo do sistema
+            <FileText size={14} weight="bold" /> Baixar manual completo do sistema
           </a>
+
+          {/* Grupo empresarial — visível no mobile (o lg mostra no painel esquerdo) */}
+          <div className="lg:hidden mt-6 flex flex-col items-center gap-2" data-testid="login-group-logos-mobile">
+            <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-[#708278]">Grupo empresarial</div>
+            <img
+              src={GROUP_LOGOS_URL}
+              alt="Grupo Macro · Dinâmica Construções · RC Silva Engenharia"
+              className="h-14 w-auto object-contain"
+              loading="lazy"
+            />
+          </div>
 
           {/* ✅ INSTALAR APP — Android/Chrome (prompt nativo) e iOS (instruções) */}
           <div className="mt-3">

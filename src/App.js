@@ -1,8 +1,9 @@
 import "@/App.css";
 import "@/index.css";
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import LoginPage from "@/pages/LoginPage";
@@ -40,134 +41,153 @@ function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-      <BrowserRouter>
-        <Toaster position="top-right" richColors closeButton />
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/aguardando" element={<PendingApprovalPage />} />
+        <BrowserRouter>
+          <Toaster position="top-right" richColors closeButton />
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/aguardando" element={<PendingApprovalPage />} />
 
-          <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-            <Route index element={<DashboardRouter />} />
-            <Route path="/requerimentos" element={<RequerimentosList />} />
-            <Route path="/requerimentos/novo" element={
-              <ProtectedRoute allow={[ROLES.FROTA, ROLES.DP, ROLES.ADMIN]}>
-                <RequerimentoWizard />
-              </ProtectedRoute>
-            } />
-            <Route path="/requerimentos/:id" element={<RequerimentoDetail />} />
+            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+              <Route index element={<DashboardRouter />} />
+              <Route path="/requerimentos" element={<RequerimentosList />} />
+              <Route path="/requerimentos/novo" element={
+                <ProtectedRoute allow={[ROLES.FROTA, ROLES.DP, ROLES.ADMIN]}>
+                  <RequerimentoWizard />
+                </ProtectedRoute>
+              } />
+              <Route path="/requerimentos/:id" element={<RequerimentoDetail />} />
 
-            {/* Indicação de necessidade — Encarregado */}
-            <Route path="/indicacoes" element={
-              <ProtectedRoute allow={[ROLES.ENCARREGADO, ROLES.FROTA, ROLES.ADMIN]}>
-                <IndicacoesList />
-              </ProtectedRoute>
-            } />
-            <Route path="/indicacoes/nova" element={
-              <ProtectedRoute allow={[ROLES.ENCARREGADO, ROLES.ADMIN]}>
-                <IndicacaoForm />
-              </ProtectedRoute>
-            } />
+              {/* Indicação de necessidade — Encarregado */}
+              <Route path="/indicacoes" element={
+                <ProtectedRoute allow={[ROLES.ENCARREGADO, ROLES.FROTA, ROLES.ADMIN]}>
+                  <IndicacoesList />
+                </ProtectedRoute>
+              } />
+              <Route path="/indicacoes/nova" element={
+                <ProtectedRoute allow={[ROLES.ENCARREGADO, ROLES.ADMIN]}>
+                  <IndicacaoForm />
+                </ProtectedRoute>
+              } />
 
-            {/* Painel de Checklists — Frota e Encarregado */}
-            <Route path="/checklists/painel" element={
-              <ProtectedRoute allow={[ROLES.FROTA, ROLES.ENCARREGADO, ROLES.ADMIN]}>
-                <ChecklistsPainel />
-              </ProtectedRoute>
-            } />
+              {/* Painel de Checklists — Frota e Encarregado */}
+              <Route path="/checklists/painel" element={
+                <ProtectedRoute allow={[ROLES.FROTA, ROLES.ENCARREGADO, ROLES.ADMIN]}>
+                  <ChecklistsPainel />
+                </ProtectedRoute>
+              } />
 
-            {/* Importação GETRAK — Frota / Admin */}
-            <Route path="/getrak" element={
-              <ProtectedRoute allow={[ROLES.FROTA, ROLES.ADMIN]}>
-                <GetrakImport />
-              </ProtectedRoute>
-            } />
+              {/* Importação GETRAK — Frota / Admin */}
+              <Route path="/getrak" element={
+                <ProtectedRoute allow={[ROLES.FROTA, ROLES.ADMIN]}>
+                  <GetrakImport />
+                </ProtectedRoute>
+              } />
 
-            {/* Revisão de Templates (6 meses) — Segurança / Admin */}
-            <Route path="/templates/revisao" element={
-              <ProtectedRoute allow={[ROLES.SEGURANCA, ROLES.ADMIN]}>
-                <TemplateRevisao />
-              </ProtectedRoute>
-            } />
+              {/* Revisão de Templates (6 meses) — Segurança / Admin */}
+              <Route path="/templates/revisao" element={
+                <ProtectedRoute allow={[ROLES.SEGURANCA, ROLES.ADMIN]}>
+                  <TemplateRevisao />
+                </ProtectedRoute>
+              } />
 
-            {/* Custo Total da Frota — Frota / Medição / Performance / Admin */}
-            <Route path="/frota/custos" element={
-              <ProtectedRoute allow={[ROLES.FROTA, ROLES.MEDICAO, ROLES.PERFORMANCE, ROLES.ADMIN]}>
-                <FrotaCustos />
-              </ProtectedRoute>
-            } />
+              {/* Custo Total da Frota — Frota / Medição / Performance / Admin */}
+              <Route path="/frota/custos" element={
+                <ProtectedRoute allow={[ROLES.FROTA, ROLES.MEDICAO, ROLES.PERFORMANCE, ROLES.ADMIN]}>
+                  <FrotaCustos />
+                </ProtectedRoute>
+              } />
 
-            {/* Tipos de Veículo — Medição (edit), demais (view) */}
-            <Route path="/tipos-veiculo" element={
-              <ProtectedRoute allow={[ROLES.MEDICAO, ROLES.PERFORMANCE, ROLES.FROTA, ROLES.DP, ROLES.ADMIN]}>
-                <VehicleTypesAdmin />
-              </ProtectedRoute>
-            } />
+              {/* Tipos de Veículo — Medição (edit), demais (view) */}
+              <Route path="/tipos-veiculo" element={
+                <ProtectedRoute allow={[ROLES.MEDICAO, ROLES.PERFORMANCE, ROLES.FROTA, ROLES.DP, ROLES.ADMIN]}>
+                  <VehicleTypesAdmin />
+                </ProtectedRoute>
+              } />
 
-            {/* Funções / Cargos — Performance */}
-            <Route path="/funcoes" element={
-              <ProtectedRoute allow={[ROLES.PERFORMANCE, ROLES.ADMIN]}>
-                <FuncoesAdmin />
-              </ProtectedRoute>
-            } />
+              {/* Funções / Cargos — Performance */}
+              <Route path="/funcoes" element={
+                <ProtectedRoute allow={[ROLES.PERFORMANCE, ROLES.ADMIN]}>
+                  <FuncoesAdmin />
+                </ProtectedRoute>
+              } />
 
-            <Route path="/vistorias" element={
-              <ProtectedRoute allow={[ROLES.SEGURANCA, ROLES.ADMIN]}><VistoriasList /></ProtectedRoute>
-            } />
-            <Route path="/vistoria/:reqId" element={
-              <ProtectedRoute allow={[ROLES.SEGURANCA, ROLES.ADMIN]}><VistoriaEntrada /></ProtectedRoute>
-            } />
+              <Route path="/vistorias" element={
+                <ProtectedRoute allow={[ROLES.SEGURANCA, ROLES.ADMIN]}><VistoriasList /></ProtectedRoute>
+              } />
+              <Route path="/vistoria/:reqId" element={
+                <ProtectedRoute allow={[ROLES.SEGURANCA, ROLES.ADMIN]}><VistoriaEntrada /></ProtectedRoute>
+              } />
 
-            <Route path="/templates" element={
-              <ProtectedRoute allow={[ROLES.SEGURANCA, ROLES.ADMIN]}><ChecklistTemplates /></ProtectedRoute>
-            } />
+              <Route path="/templates" element={
+                <ProtectedRoute allow={[ROLES.SEGURANCA, ROLES.ADMIN]}><ChecklistTemplates /></ProtectedRoute>
+              } />
 
-            <Route path="/checklist/digital" element={
-              <ProtectedRoute allow={[ROLES.MOTORISTA, ROLES.ENCARREGADO, ROLES.ADMIN]}>
-                <ChecklistFill mode="digital" />
-              </ProtectedRoute>
-            } />
-            <Route path="/checklist/manual" element={
-              <ProtectedRoute allow={[ROLES.ENCARREGADO, ROLES.ADMIN]}>
-                <ChecklistFill mode="manual" />
-              </ProtectedRoute>
-            } />
-            <Route path="/checklists" element={<ChecklistList />} />
-            <Route path="/checklists/:id" element={<ChecklistDetail />} />
+              <Route path="/checklist/digital" element={
+                <ProtectedRoute allow={[ROLES.MOTORISTA, ROLES.ENCARREGADO, ROLES.ADMIN]}>
+                  <ChecklistFill mode="digital" />
+                </ProtectedRoute>
+              } />
+              <Route path="/checklist/manual" element={
+                <ProtectedRoute allow={[ROLES.ENCARREGADO, ROLES.ADMIN]}>
+                  <ChecklistFill mode="manual" />
+                </ProtectedRoute>
+              } />
+              <Route path="/checklists" element={<ChecklistList />} />
+              <Route path="/checklists/:id" element={<ChecklistDetail />} />
 
-            <Route path="/veiculos" element={<VeiculosList />} />
-            <Route path="/veiculos/:id" element={<VehicleDetail />} />
-            <Route path="/frota/relatorios" element={
-              <ProtectedRoute allow={[ROLES.MEDICAO, ROLES.PERFORMANCE, ROLES.FROTA, ROLES.ADMIN]}><FrotaRelatorios /></ProtectedRoute>
-            } />
-            <Route path="/motoristas" element={
-              <ProtectedRoute allow={[ROLES.ENCARREGADO, ROLES.FROTA, ROLES.SEGURANCA, ROLES.DP, ROLES.ADMIN]}>
-                <MotoristasList />
-              </ProtectedRoute>
-            } />
-            <Route path="/teams" element={
-              <ProtectedRoute allow={[ROLES.PERFORMANCE, ROLES.DP, ROLES.ADMIN]}><TeamsAdmin /></ProtectedRoute>
-            } />
-            <Route path="/users" element={
-              <ProtectedRoute allow={[ROLES.ADMIN, ROLES.ENCARREGADO, ROLES.FROTA, ROLES.DP]}><UsersAdmin /></ProtectedRoute>
-            } />
+              <Route path="/veiculos" element={<VeiculosList />} />
+              <Route path="/veiculos/:id" element={<VehicleDetail />} />
+              <Route path="/frota/relatorios" element={
+                <ProtectedRoute allow={[ROLES.MEDICAO, ROLES.PERFORMANCE, ROLES.FROTA, ROLES.ADMIN]}><FrotaRelatorios /></ProtectedRoute>
+              } />
+              <Route path="/motoristas" element={
+                <ProtectedRoute allow={[ROLES.ENCARREGADO, ROLES.FROTA, ROLES.SEGURANCA, ROLES.DP, ROLES.ADMIN]}>
+                  <MotoristasList />
+                </ProtectedRoute>
+              } />
+              <Route path="/teams" element={
+                <ProtectedRoute allow={[ROLES.PERFORMANCE, ROLES.DP, ROLES.ADMIN]}><TeamsAdmin /></ProtectedRoute>
+              } />
+              <Route path="/users" element={
+                <ProtectedRoute allow={[ROLES.ADMIN, ROLES.ENCARREGADO, ROLES.FROTA, ROLES.DP]}><UsersAdmin /></ProtectedRoute>
+              } />
 
-            {/* Temas por perfil — DP/Admin */}
-            <Route path="/temas" element={
-              <ProtectedRoute allow={[ROLES.DP, ROLES.ADMIN]}><ThemeAdmin /></ProtectedRoute>
-            } />
+              {/* Temas por perfil — DP/Admin */}
+              <Route path="/temas" element={
+                <ProtectedRoute allow={[ROLES.DP, ROLES.ADMIN]}><ThemeAdmin /></ProtectedRoute>
+              } />
 
-            {/* Backup & Restauração — apenas Admin TI */}
-            <Route path="/backup" element={
-              <ProtectedRoute allow={[ROLES.ADMIN]}><BackupAdmin /></ProtectedRoute>
-            } />
-          </Route>
+              {/* Backup & Restauração — apenas Admin TI */}
+              <Route path="/backup" element={
+                <ProtectedRoute allow={[ROLES.ADMIN]}><BackupAdmin /></ProtectedRoute>
+              } />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </BrowserRouter>
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </BrowserRouter>
       </ThemeProvider>
     </AuthProvider>
   );
 }
 
 export default App;
+
+/**
+ * SplashController — remove o splash HTML inicial (index.html) quando o
+ * AuthContext resolve o estado de autenticação. Como o AuthProvider aguarda
+ * o `onAuthStateChanged` do Firebase, isso garante que o usuário só vê a
+ * tela de login/dashboard quando o app está de fato pronto para interagir.
+ */
+function SplashController() {
+  const { loading } = useAuth();
+  useEffect(() => {
+    if (loading) return;
+    const s = document.getElementById("app-splash");
+    if (!s) return;
+    s.classList.add("is-out");
+    const t = setTimeout(() => s.remove(), 450);
+    return () => clearTimeout(t);
+  }, [loading]);
+  return null;
+}
