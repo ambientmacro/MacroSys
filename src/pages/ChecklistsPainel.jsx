@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../contexts/AuthContext";
@@ -27,7 +27,22 @@ export default function ChecklistsPainel() {
   const [myTeams, setMyTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   // Filtro ativo dos cards de métricas: "todos" | "ok" | "pendente" | "nao_conforme"
-  const [filter, setFilter] = useState("todos");
+  // Aceita também `?filter=<valor>` na querystring para permitir deep-link a
+  // partir de outras telas (ex.: card do dashboard do Frota abrindo já em
+  // "Checklist OK"). Valores desconhecidos caem em "todos".
+  const [searchParams, setSearchParams] = useSearchParams();
+  const allowedFilters = ["todos", "ok", "pendente", "nao_conforme"];
+  const initialFilter = allowedFilters.includes(searchParams.get("filter")) ? searchParams.get("filter") : "todos";
+  const [filter, _setFilter] = useState(initialFilter);
+  // Wrapper que também sincroniza a querystring (para o usuário poder
+  // compartilhar o link e para o botão "voltar" preservar o estado).
+  const setFilter = (v) => {
+    _setFilter(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === "todos") next.delete("filter");
+    else next.set("filter", v);
+    setSearchParams(next, { replace: true });
+  };
 
   const isEncarregado = profile.role === ROLES.ENCARREGADO;
 

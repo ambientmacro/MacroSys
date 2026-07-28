@@ -3,10 +3,11 @@ import { Link } from "react-router-dom";
 import { collection, onSnapshot, orderBy, query, where, getDocs } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../contexts/AuthContext";
-import { ROLES } from "../lib/constants";
-import { ClipboardText, CaretRight, Truck, User } from "@phosphor-icons/react";
+import { ROLES, VEHICLE_STATUS } from "../lib/constants";
+import { ClipboardText, CaretRight, Truck, User, Warning, WhatsappLogo } from "@phosphor-icons/react";
 import Pagination, { usePagination } from "../components/Pagination";
 import FilterCard from "../components/FilterCard";
+import { buildWaLink } from "../lib/whatsapp";
 
 function MainCollapse({ children }) {
   const [open, setOpen] = useState(false);
@@ -157,7 +158,7 @@ export default function ChecklistList() {
   // Lista final (para tabela) — todos os filtros aplicados.
   const filteredItems = useMemo(() => {
     return items.filter((c) => inDateRange(c) && matchType(c) && matchSource(c) && matchVehicle(c) && matchDriver(c) && matchSearch(c));
-     
+
   }, [items, dateStart, dateEnd, typeFilter, sourceFilter, vehicleFilter, driverFilter, search]);
 
   // Para cada dimensão dos filtros avançados, aplicamos TODOS os filtros
@@ -165,22 +166,22 @@ export default function ChecklistList() {
   // "quantos apareceriam se eu clicasse aqui, mantendo os outros filtros".
   const listForType = useMemo(
     () => items.filter((c) => inDateRange(c) && matchSource(c) && matchVehicle(c) && matchDriver(c) && matchSearch(c)),
-     
+
     [items, dateStart, dateEnd, sourceFilter, vehicleFilter, driverFilter, search]
   );
   const listForSource = useMemo(
     () => items.filter((c) => inDateRange(c) && matchType(c) && matchVehicle(c) && matchDriver(c) && matchSearch(c)),
-     
+
     [items, dateStart, dateEnd, typeFilter, vehicleFilter, driverFilter, search]
   );
   const listForVehicle = useMemo(
     () => items.filter((c) => inDateRange(c) && matchType(c) && matchSource(c) && matchDriver(c) && matchSearch(c)),
-     
+
     [items, dateStart, dateEnd, typeFilter, sourceFilter, driverFilter, search]
   );
   const listForDriver = useMemo(
     () => items.filter((c) => inDateRange(c) && matchType(c) && matchSource(c) && matchVehicle(c) && matchSearch(c)),
-     
+
     [items, dateStart, dateEnd, typeFilter, sourceFilter, vehicleFilter, search]
   );
 
@@ -190,6 +191,144 @@ export default function ChecklistList() {
     const vistorias = filteredItems.filter(isVistoria).length;
     return { total, vistorias, diarios: total - vistorias };
   }, [filteredItems]);
+
+  // ─── Auditoria: Veículos sem checklist no período ───────────────────────
+  // Cruzamos os veículos ativos com os `filteredItems` (checklists no
+  // período selecionado). Os veículos ativos que NÃO aparecem na lista de
+  // vehicleId dos filteredItems são o "gap" — foco da auditoria do Frota.
+  //
+  // Enriquecemos com nome do encarregado (via team + users) e telefones
+  // para permitir cobrança direta via WhatsApp (mesmo padrão do dashboard).
+  // Só executa quando: (1) usuário não é motorista; (2) há filtro de data
+  // ativo (auditoria "cega" sobre todo o histórico não faz sentido).
+  const [ativosMap, setAtivosMap] = useState(null); // Map<vehicleId, veh+enriched> | null
+  useEffect(() => {
+    if (isMotorista) { setAtivosMap(null); return; }
+    let cancelled = false;
+    (async () => {
+      const vSnap = await getDocs(query(collection(db, "vehicles"), where("status", "==", VEHICLE_STATUS.ACTIVE)));
+      const ativos = vSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const teamIds = Array.from(new Set(ativos.map((v) => v.teamId).filter(Boolean)));
+      const driverIds = Array.from(new Set(ativos.flatMap((v) => Array.isArray(v.motoristasTitularesIds) ? v.motoristasTitularesIds : [])));
+      const [teamsSnap, usersSnap, driversSnap] = await Promise.all([
+        teamIds.length > 0 ? getDocs(collection(db, "teams")) : Promise.resolve(null),
+        teamIds.length > 0 ? getDocs(collection(db, "users")) : Promise.resolve(null),
+        driverIds.length > 0 ? getDocs(collection(db, "drivers")) : Promise.resolve(null),
+      ]);
+      const usersById = new Map();
+      usersSnap?.forEach((u) => usersById.set(u.id, u.data()));
+      const teamMap = new Map();
+      teamsSnap?.docs
+        ?.map((t) => ({ id: t.id, ...t.data() }))
+        ?.filter((t) => teamIds.includes(t.id))
+        ?.forEach((t) => {
+          const leader = usersById.get(t.leaderUserId);
+          teamMap.set(t.id, { name: t.name, leaderName: leader?.name || null, leaderPhone: leader?.phone || null });
+        });
+      const driverMap = new Map();
+      driversSnap?.forEach((d) => {
+        if (driverIds.includes(d.id)) {
+          const data = d.data();
+          driverMap.set(d.id, { name: data.name || null, phone: data.phone || null });
+        }
+      });
+      if (cancelled) return;
+      const map = new Map();
+      ativos.forEach((v) => {
+        const teamInfo = v.teamId ? teamMap.get(v.teamId) : null;
+        const ids = Array.isArray(v.motoristasTitularesIds) ? v.motoristasTitularesIds : (v.motoristaTitularId ? [v.motoristaTitularId] : []);
+        const nomes = Array.isArray(v.motoristasTitularesNomes) ? v.motoristasTitularesNomes : (v.motoristaTitularNome ? [v.motoristaTitularNome] : []);
+        const motoristas = ids.length > 0
+          ? ids.map((id, i) => ({ id, name: driverMap.get(id)?.name || nomes[i] || null, phone: driverMap.get(id)?.phone || null }))
+          : nomes.map((n) => ({ id: null, name: n, phone: null }));
+        map.set(v.id, {
+          ...v,
+          _equipeNome: teamInfo?.name || null,
+          _encarregadoNome: teamInfo?.leaderName || null,
+          _encarregadoPhone: teamInfo?.leaderPhone || null,
+          _motoristas: motoristas,
+        });
+      });
+      setAtivosMap(map);
+    })();
+    return () => { cancelled = true; };
+  }, [isMotorista]);
+
+  // Só faz sentido mostrar auditoria com um período delimitado (evita listar
+  // veículos sem checklist "de sempre" — pesado e sem contexto).
+  const auditingPeriod = !isMotorista && (dateStart || dateEnd);
+
+  // Cálculo dia-a-dia: para cada veículo ativo, montamos a lista de datas
+  // esperadas no período (limitada superiormente por HOJE — não contamos
+  // "checklists no futuro") e comparamos com as datas em que ele
+  // efetivamente teve checklist. O total é a soma dessas pendências.
+  //
+  // Também respeita `activatedAt` do veículo: se o equipamento só entrou
+  // ativo no meio do período, expected começa a partir dessa data.
+  const auditoria = useMemo(() => {
+    if (!auditingPeriod || !ativosMap) return { list: [], totalPendencias: 0, endEffISO: null };
+    // Janela real (capada em hoje):
+    const startISO = dateStart || todayISO; // sem dateStart faz auditoria só de hoje
+    const endISO = (!dateEnd || dateEnd > todayISO) ? todayISO : dateEnd;
+    if (startISO > endISO) return { list: [], totalPendencias: 0, endEffISO: endISO };
+
+    // Gera todas as datas ISO no intervalo [startISO, endISO] — considerando
+    // APENAS dias úteis (segunda a sexta). Sábado (getDay=6) e domingo
+    // (getDay=0) são ignorados para não inflar o total de "checklists
+    // faltantes" com dias em que a operação está parada.
+    const allDates = [];
+    const cur = new Date(startISO + "T00:00:00");
+    const end = new Date(endISO + "T00:00:00");
+    while (cur <= end) {
+      const dow = cur.getDay();
+      if (dow !== 0 && dow !== 6) {
+        allDates.push(cur.toISOString().slice(0, 10));
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    // Agrupa checklists do período por veículo → Set de datas distintas.
+    const datesByVeh = new Map();
+    filteredItems.forEach((c) => {
+      if (!c.vehicleId) return;
+      const cd = c.createdAt?.toDate?.();
+      if (!cd) return;
+      const iso = cd.toISOString().slice(0, 10);
+      if (!datesByVeh.has(c.vehicleId)) datesByVeh.set(c.vehicleId, new Set());
+      datesByVeh.get(c.vehicleId).add(iso);
+    });
+
+    const toISO = (v) => {
+      const d = v?.toDate ? v.toDate() : (v ? new Date(v) : null);
+      return d && !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null;
+    };
+
+    let totalPendencias = 0;
+    const list = [];
+    for (const v of ativosMap.values()) {
+      const activatedISO = toISO(v.activatedAt);
+      // datas esperadas para ESTE veículo: só a partir da ativação.
+      const expected = activatedISO
+        ? allDates.filter((d) => d >= activatedISO)
+        : allDates;
+      if (expected.length === 0) continue;
+      const filled = datesByVeh.get(v.id) || new Set();
+      const missing = expected.filter((d) => !filled.has(d));
+      if (missing.length > 0) {
+        totalPendencias += missing.length;
+        list.push({
+          ...v,
+          _expectedCount: expected.length,
+          _missingCount: missing.length,
+          _filledCount: expected.length - missing.length,
+        });
+      }
+    }
+    // Ordena por criticidade (mais dias faltando primeiro).
+    list.sort((a, b) => b._missingCount - a._missingCount);
+    return { list, totalPendencias, endEffISO: endISO };
+  }, [auditingPeriod, ativosMap, filteredItems, dateStart, dateEnd, todayISO]);
+  const veiculosSemChecklist = auditoria.list;
 
   const { paged, ...pag } = usePagination(filteredItems, { defaultPerPage: 10 });
 
@@ -314,89 +453,89 @@ export default function ChecklistList() {
         <MainCollapse>
           <div className="grid lg:grid-cols-4 gap-4">
 
-          {/* tipo */}
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Tipo</div>
-            <div className="space-y-2">
-              <FilterCard
-                label="Vistoria"
-                value={listForType.filter(isVistoria).length}
-                color="#4A7A8C"
-                active={typeFilter === "VISTORIA"}
-                onClick={() => setTypeFilter(typeFilter === "VISTORIA" ? null : "VISTORIA")}
-              />
-
-              <FilterCard
-                label="Diário"
-                value={listForType.filter((c) => !isVistoria(c)).length}
-                color="#1E3A5F"
-                active={typeFilter === "DIARIO"}
-                onClick={() => setTypeFilter(typeFilter === "DIARIO" ? null : "DIARIO")}
-              />
-            </div>
-          </div>
-
-          {/* origem */}
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Origem</div>
-            <div className="space-y-2">
-              <FilterCard
-                label="App"
-                value={listForSource.filter((c) => srcOf(c) === "digital").length}
-                color="#2563EB"
-                active={sourceFilter === "APP"}
-                onClick={() => setSourceFilter(sourceFilter === "APP" ? null : "APP")}
-              />
-
-              <FilterCard
-                label="Papel"
-                value={listForSource.filter((c) => srcOf(c) === "manual").length}
-                color="#8EA694"
-                active={sourceFilter === "PAPEL"}
-                onClick={() => setSourceFilter(sourceFilter === "PAPEL" ? null : "PAPEL")}
-              />
-            </div>
-          </div>
-
-          {/* veículo */}
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Veículo</div>
-            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-              {vehicleTags.length === 0 && (
-                <div className="text-[11px] italic text-[#708278] py-2">Nenhum veículo no período.</div>
-              )}
-              {vehicleTags.map((tag) => (
+            {/* tipo */}
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Tipo</div>
+              <div className="space-y-2">
                 <FilterCard
-                  key={tag}
-                  label={tag}
-                  value={listForVehicle.filter((c) => c.vehicleTag === tag).length}
+                  label="Vistoria"
+                  value={listForType.filter(isVistoria).length}
+                  color="#4A7A8C"
+                  active={typeFilter === "VISTORIA"}
+                  onClick={() => setTypeFilter(typeFilter === "VISTORIA" ? null : "VISTORIA")}
+                />
+
+                <FilterCard
+                  label="Diário"
+                  value={listForType.filter((c) => !isVistoria(c)).length}
                   color="#1E3A5F"
-                  active={vehicleFilter === tag}
-                  onClick={() => setVehicleFilter(vehicleFilter === tag ? null : tag)}
+                  active={typeFilter === "DIARIO"}
+                  onClick={() => setTypeFilter(typeFilter === "DIARIO" ? null : "DIARIO")}
                 />
-              ))}
+              </div>
             </div>
-          </div>
 
-          {/* motorista */}
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Motorista</div>
-            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-              {driverNames.length === 0 && (
-                <div className="text-[11px] italic text-[#708278] py-2">Nenhum motorista no período.</div>
-              )}
-              {driverNames.map((name) => (
+            {/* origem */}
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Origem</div>
+              <div className="space-y-2">
                 <FilterCard
-                  key={name}
-                  label={name}
-                  value={listForDriver.filter((c) => driverOf(c) === name).length}
+                  label="App"
+                  value={listForSource.filter((c) => srcOf(c) === "digital").length}
                   color="#2563EB"
-                  active={driverFilter === name}
-                  onClick={() => setDriverFilter(driverFilter === name ? null : name)}
+                  active={sourceFilter === "APP"}
+                  onClick={() => setSourceFilter(sourceFilter === "APP" ? null : "APP")}
                 />
-              ))}
+
+                <FilterCard
+                  label="Papel"
+                  value={listForSource.filter((c) => srcOf(c) === "manual").length}
+                  color="#8EA694"
+                  active={sourceFilter === "PAPEL"}
+                  onClick={() => setSourceFilter(sourceFilter === "PAPEL" ? null : "PAPEL")}
+                />
+              </div>
             </div>
-          </div>
+
+            {/* veículo */}
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Veículo</div>
+              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                {vehicleTags.length === 0 && (
+                  <div className="text-[11px] italic text-[#708278] py-2">Nenhum veículo no período.</div>
+                )}
+                {vehicleTags.map((tag) => (
+                  <FilterCard
+                    key={tag}
+                    label={tag}
+                    value={listForVehicle.filter((c) => c.vehicleTag === tag).length}
+                    color="#1E3A5F"
+                    active={vehicleFilter === tag}
+                    onClick={() => setVehicleFilter(vehicleFilter === tag ? null : tag)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* motorista */}
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Motorista</div>
+              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                {driverNames.length === 0 && (
+                  <div className="text-[11px] italic text-[#708278] py-2">Nenhum motorista no período.</div>
+                )}
+                {driverNames.map((name) => (
+                  <FilterCard
+                    key={name}
+                    label={name}
+                    value={listForDriver.filter((c) => driverOf(c) === name).length}
+                    color="#2563EB"
+                    active={driverFilter === name}
+                    onClick={() => setDriverFilter(driverFilter === name ? null : name)}
+                  />
+                ))}
+              </div>
+            </div>
 
           </div>
         </MainCollapse>
@@ -405,20 +544,113 @@ export default function ChecklistList() {
       {/* Resumo dinâmico — só faz sentido quando os filtros avançados estão
           disponíveis (Encarregado/Frota/Admin). Para motorista não exibimos. */}
       {!isMotorista && (
-      <div className="mt-4 grid grid-cols-3 gap-3" data-testid="checklists-summary">
-        <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
-          <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Total no filtro</div>
-          <div className="text-2xl font-black text-[#0F1411] leading-none mt-1" data-testid="summary-total">{summary.total}</div>
+        <div className="mt-4 grid grid-cols-3 gap-3" data-testid="checklists-summary">
+          <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
+            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Total no filtro</div>
+            <div className="text-2xl font-black text-[#0F1411] leading-none mt-1" data-testid="summary-total">{summary.total}</div>
+          </div>
+          <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
+            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Vistorias</div>
+            <div className="text-2xl font-black text-[#2E4F5C] leading-none mt-1" data-testid="summary-vistorias">{summary.vistorias}</div>
+          </div>
+          <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
+            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Diários</div>
+            <div className="text-2xl font-black text-[#1E3A5F] leading-none mt-1" data-testid="summary-diarios">{summary.diarios}</div>
+          </div>
         </div>
-        <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
-          <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Vistorias</div>
-          <div className="text-2xl font-black text-[#2E4F5C] leading-none mt-1" data-testid="summary-vistorias">{summary.vistorias}</div>
+      )}
+
+      {/* Auditoria — veículos ativos SEM checklist no período selecionado.
+          Só aparece para não-motorista quando há filtro de data ativo.
+          Cálculo é dia-a-dia (respeita activatedAt do veículo) e capa em
+          HOJE — não conta "checklists no futuro". */}
+      {auditingPeriod && ativosMap && (
+        <div className="mt-4 border border-[#DC2626]/30 bg-[#FEF2F2] rounded-md p-4" data-testid="auditoria-sem-checklist">
+          <div className="flex items-start gap-2 mb-3">
+            <Warning size={18} weight="duotone" className="text-[#991B1B] mt-0.5" />
+            <div className="flex-1">
+              <div className="text-xs uppercase tracking-[0.2em] font-bold text-[#991B1B]" data-testid="auditoria-titulo">
+                {veiculosSemChecklist.length} veículo(s) sem preenchimento — {auditoria.totalPendencias} checklist(s) faltante(s)
+              </div>
+              <div className="text-[11px] text-[#7F1D1D] mt-1">
+                Período apurado: {dateStart || todayISO} → {auditoria.endEffISO || todayISO}
+                {" · considerando apenas dias úteis (seg-sex)"}
+                {dateEnd && dateEnd > todayISO && (
+                  <span className="ml-1 italic">
+                    (fim solicitado {dateEnd} foi capado em hoje — não contamos dias futuros)
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          {veiculosSemChecklist.length === 0 ? (
+            <div className="text-sm text-[#166534] italic py-2">
+              ✅ Todos os veículos ativos tiveram checklist em cada dia do período. Bom trabalho!
+            </div>
+          ) : (
+            <ul className="space-y-2 max-h-96 overflow-y-auto pr-1">
+              {veiculosSemChecklist.map((v) => {
+                const vehLabel = v.tag || v.placa || v.id.slice(0, 8);
+                const vehSubtitle = [v.marca, v.modelo].filter(Boolean).join(" ");
+                const checklistUrl = `${window.location.origin}/checklist/digital`;
+                const periodoTxt = `${dateStart || "início"} a ${auditoria.endEffISO || "hoje"}`;
+                const msgMotorista = `Olá! O veículo ${vehLabel}${vehSubtitle ? ` (${vehSubtitle})` : ""} está com ${v._missingCount} dia(s) sem checklist no período ${periodoTxt}. Por favor, preencha agora: ${checklistUrl}`;
+                const msgEncarregado = `Olá! O veículo ${vehLabel}${vehSubtitle ? ` (${vehSubtitle})` : ""} da equipe "${v._equipeNome || ""}" está com ${v._missingCount} dia(s) sem checklist no período ${periodoTxt}. Favor providenciar.`;
+                return (
+                  <li key={v.id} className="border border-[#DC2626]/20 bg-white rounded px-3 py-2.5" data-testid={`sem-checklist-${v.id}`}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <Link to={`/veiculos/${v.id}`} className="text-sm text-[#0F2542] font-bold hover:underline">
+                          {vehLabel}{vehSubtitle ? ` — ${vehSubtitle}` : ""}
+                        </Link>
+                        <div className="text-[11px] text-[#4A564F] mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span>
+                            <b className="text-[#708278] uppercase tracking-[0.1em] text-[10px] mr-1">Encarregado:</b>
+                            {v._encarregadoNome || <em className="text-[#9CA3AF]">não vinculado</em>}
+                          </span>
+                          {v._encarregadoNome && v._encarregadoPhone && (
+                            <WaChip phone={v._encarregadoPhone} message={msgEncarregado} testId={`wa-enc-${v.id}`} />
+                          )}
+                          {v._equipeNome && (
+                            <span className="ml-2">
+                              <b className="text-[#708278] uppercase tracking-[0.1em] text-[10px] mr-1">Equipe:</b>
+                              {v._equipeNome}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-[#4A564F] mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <b className="text-[#708278] uppercase tracking-[0.1em] text-[10px] mr-1">Motoristas:</b>
+                          {v._motoristas.length === 0
+                            ? <em className="text-[#9CA3AF]">nenhum titular</em>
+                            : v._motoristas.map((m, i) => (
+                              <span key={m.id || `${m.name}-${i}`} className="inline-flex items-center gap-1">
+                                {m.name || <em className="text-[#9CA3AF]">(sem nome)</em>}
+                                {m.phone && (
+                                  <WaChip phone={m.phone} message={msgMotorista} testId={`wa-mot-${v.id}-${i}`} />
+                                )}
+                                {i < v._motoristas.length - 1 && <span className="text-[#CBD5E1]">·</span>}
+                              </span>
+                            ))}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0 self-center">
+                        <div className="text-[#991B1B] text-lg font-black leading-none" data-testid={`missing-count-${v.id}`}>
+                          {v._missingCount}
+                        </div>
+                        <div className="text-[9px] uppercase tracking-[0.1em] font-bold text-[#991B1B]">
+                          dia{v._missingCount > 1 ? "s" : ""} sem checklist
+                        </div>
+                        <div className="text-[10px] text-[#708278] mt-0.5">
+                          {v._filledCount}/{v._expectedCount} feitos
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
-        <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
-          <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Diários</div>
-          <div className="text-2xl font-black text-[#1E3A5F] leading-none mt-1" data-testid="summary-diarios">{summary.diarios}</div>
-        </div>
-      </div>
       )}
 
       {/* banner filtros ativos */}
@@ -528,8 +760,8 @@ export default function ChecklistList() {
               <div className="flex items-center gap-3">
                 <span
                   className={`text-[10px] uppercase tracking-[0.15em] font-bold px-2.5 py-1 rounded-md border ${isVistoria
-                      ? "bg-[#4A7A8C]/15 text-[#2E4F5C] border-[#4A7A8C]/40"
-                      : "bg-[#1E3A5F]/15 text-[#0A1A2E] border-[#1E3A5F]/40"
+                    ? "bg-[#4A7A8C]/15 text-[#2E4F5C] border-[#4A7A8C]/40"
+                    : "bg-[#1E3A5F]/15 text-[#0A1A2E] border-[#1E3A5F]/40"
                     }`}
                 >
                   {sourceLabel}
@@ -547,5 +779,29 @@ export default function ChecklistList() {
 
       <Pagination {...pag} testid="checklists-pagination" />
     </div>
+  );
+}
+
+/**
+ * Chip pequeno "abrir WhatsApp" — usado na seção de auditoria "sem
+ * checklist no período". Se o telefone estiver sujo, `buildWaLink` retorna
+ * null e o botão simplesmente não é renderizado.
+ */
+function WaChip({ phone, message, testId }) {
+  const url = buildWaLink(phone, message);
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Cobrar via WhatsApp"
+      data-testid={testId}
+      onClick={(e) => e.stopPropagation()}
+      className="inline-flex items-center gap-1 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-[0.08em] transition-colors"
+    >
+      <WhatsappLogo size={12} weight="fill" />
+      Cobrar
+    </a>
   );
 }

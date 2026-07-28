@@ -310,7 +310,7 @@ function FrotaDash() {
           label="Checklists preenchidos hoje"
           value={checklistsHoje}
           accent="#10B981"
-          to="/checklists"
+          to="/checklists/painel?filter=ok"
           testId="stat-checklists-hoje"
         />
         <StatCard
@@ -318,7 +318,7 @@ function FrotaDash() {
           label="Parados hoje (sem checklist)"
           value={paradosHoje.count}
           accent={paradosHoje.count > 0 ? "#DC2626" : "#10B981"}
-          to="/veiculos"
+          to="/checklists/painel?filter=pendente"
           testId="stat-parados-hoje"
         />
         <button
