@@ -202,6 +202,9 @@ export default function ChecklistList() {
   // Só executa quando: (1) usuário não é motorista; (2) há filtro de data
   // ativo (auditoria "cega" sobre todo o histórico não faz sentido).
   const [ativosMap, setAtivosMap] = useState(null); // Map<vehicleId, veh+enriched> | null
+  // Veículo selecionado para o modal "Dias sem checklist" — mostra as datas
+  // exatas em que o veículo ficou sem preenchimento no período apurado.
+  const [detailVeh, setDetailVeh] = useState(null);
   useEffect(() => {
     if (isMotorista) { setAtivosMap(null); return; }
     let cancelled = false;
@@ -314,6 +317,7 @@ export default function ChecklistList() {
       if (expected.length === 0) continue;
       const filled = datesByVeh.get(v.id) || new Set();
       const missing = expected.filter((d) => !filled.has(d));
+      const filledInPeriod = expected.filter((d) => filled.has(d));
       if (missing.length > 0) {
         totalPendencias += missing.length;
         list.push({
@@ -321,6 +325,8 @@ export default function ChecklistList() {
           _expectedCount: expected.length,
           _missingCount: missing.length,
           _filledCount: expected.length - missing.length,
+          _missingDates: missing,
+          _filledDates: filledInPeriod,
         });
       }
     }
@@ -597,10 +603,18 @@ export default function ChecklistList() {
                 const msgMotorista = `Olá! O veículo ${vehLabel}${vehSubtitle ? ` (${vehSubtitle})` : ""} está com ${v._missingCount} dia(s) sem checklist no período ${periodoTxt}. Por favor, preencha agora: ${checklistUrl}`;
                 const msgEncarregado = `Olá! O veículo ${vehLabel}${vehSubtitle ? ` (${vehSubtitle})` : ""} da equipe "${v._equipeNome || ""}" está com ${v._missingCount} dia(s) sem checklist no período ${periodoTxt}. Favor providenciar.`;
                 return (
-                  <li key={v.id} className="border border-[#DC2626]/20 bg-white rounded px-3 py-2.5" data-testid={`sem-checklist-${v.id}`}>
+                  <li
+                    key={v.id}
+                    onClick={() => setDetailVeh(v)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDetailVeh(v); } }}
+                    className="border border-[#DC2626]/20 bg-white rounded px-3 py-2.5 cursor-pointer hover:border-[#DC2626]/50 hover:bg-[#FEF2F2] transition-colors focus:outline-none focus:ring-2 focus:ring-[#DC2626]/40"
+                    data-testid={`sem-checklist-${v.id}`}
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <Link to={`/veiculos/${v.id}`} className="text-sm text-[#0F2542] font-bold hover:underline">
+                        <Link to={`/veiculos/${v.id}`} onClick={(e) => e.stopPropagation()} className="text-sm text-[#0F2542] font-bold hover:underline">
                           {vehLabel}{vehSubtitle ? ` — ${vehSubtitle}` : ""}
                         </Link>
                         <div className="text-[11px] text-[#4A564F] mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -642,6 +656,9 @@ export default function ChecklistList() {
                         </div>
                         <div className="text-[10px] text-[#708278] mt-0.5">
                           {v._filledCount}/{v._expectedCount} feitos
+                        </div>
+                        <div className="text-[9px] uppercase tracking-[0.15em] font-bold text-[#2563EB] mt-1">
+                          ver dias ›
                         </div>
                       </div>
                     </div>
@@ -778,6 +795,106 @@ export default function ChecklistList() {
       </div>
 
       <Pagination {...pag} testid="checklists-pagination" />
+
+      {detailVeh && (
+        <DiasSemChecklistModal
+          veh={detailVeh}
+          startISO={dateStart || todayISO}
+          endISO={auditoria.endEffISO || todayISO}
+          onClose={() => setDetailVeh(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Modal detalhado — lista as datas exatas em que um veículo ficou sem
+ * checklist no período apurado, ao lado das datas em que foi preenchido.
+ * Cada linha mostra o dia da semana em pt-BR para leitura rápida.
+ */
+function DiasSemChecklistModal({ veh, startISO, endISO, onClose }) {
+  const fmt = (iso) => {
+    const d = new Date(iso + "T00:00:00");
+    const dowShort = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][d.getDay()];
+    return { data: d.toLocaleDateString("pt-BR"), dow: dowShort, iso };
+  };
+  const missing = (veh._missingDates || []).map(fmt);
+  const filled = (veh._filledDates || []).map(fmt);
+  const vehLabel = veh.tag || veh.placa || veh.id.slice(0, 8);
+  const vehSubtitle = [veh.marca, veh.modelo].filter(Boolean).join(" ");
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+      onClick={onClose}
+      data-testid="modal-dias-sem-checklist"
+    >
+      <div
+        className="bg-white rounded-lg max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-6 py-4 border-b border-[#E2E8E4] flex items-center justify-between">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-[#708278]">Detalhes por dia</div>
+            <h3 className="font-[Outfit,sans-serif] text-lg font-black tracking-tight text-[#0F1411] mt-1">
+              {vehLabel}{vehSubtitle ? ` — ${vehSubtitle}` : ""}
+            </h3>
+            <div className="text-[11px] text-[#708278] mt-1">
+              Período apurado: {startISO} → {endISO} · dias úteis (seg-sex)
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            data-testid="modal-dias-close"
+            className="p-2 rounded-md hover:bg-[#EFF3F8] text-[#708278] text-xl font-bold"
+            aria-label="Fechar"
+          >
+            ×
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Dias sem checklist */}
+          <section>
+            <h4 className="text-sm font-black uppercase tracking-[0.15em] text-[#991B1B] mb-3">
+              🚫 Sem checklist ({missing.length})
+            </h4>
+            {missing.length === 0 ? (
+              <div className="text-sm text-[#166534] italic border border-dashed border-[#E2E8E4] rounded-md p-4 text-center">
+                Todos os dias tiveram checklist. ✅
+              </div>
+            ) : (
+              <ul className="space-y-1.5">
+                {missing.map((d) => (
+                  <li key={d.iso} className="flex items-center justify-between border border-[#DC2626]/30 bg-[#FEF2F2] rounded px-3 py-2 text-sm" data-testid={`missing-${d.iso}`}>
+                    <span className="font-bold text-[#0F2542]">{d.data}</span>
+                    <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#991B1B]">{d.dow}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          {/* Dias com checklist */}
+          <section>
+            <h4 className="text-sm font-black uppercase tracking-[0.15em] text-[#166534] mb-3">
+              ✅ Com checklist ({filled.length})
+            </h4>
+            {filled.length === 0 ? (
+              <div className="text-sm text-[#708278] italic border border-dashed border-[#E2E8E4] rounded-md p-4 text-center">
+                Nenhum checklist no período.
+              </div>
+            ) : (
+              <ul className="space-y-1.5">
+                {filled.map((d) => (
+                  <li key={d.iso} className="flex items-center justify-between border border-[#10B981]/30 bg-[#F0FDF4] rounded px-3 py-2 text-sm">
+                    <span className="font-bold text-[#0F2542]">{d.data}</span>
+                    <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#166534]">{d.dow}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
