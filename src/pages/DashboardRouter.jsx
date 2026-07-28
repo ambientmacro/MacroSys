@@ -178,6 +178,9 @@ function FrotaDash() {
   // Contador dos checklists efetivamente preenchidos hoje (contraponto ao
   // card "Parados hoje"). Reflete a produtividade real do dia.
   const [checklistsHoje, setChecklistsHoje] = useState(0);
+  // Contador dos checklists NÃO conformes hoje — mesma lógica do
+  // ChecklistsPainel (`hasNonConformity === true` OU alguma resposta === false).
+  const [naoConformesHoje, setNaoConformesHoje] = useState(0);
   useEffect(() => {
     const start = new Date(); start.setHours(0, 0, 0, 0);
     const end = new Date(start); end.setDate(end.getDate() + 1);
@@ -191,6 +194,25 @@ function FrotaDash() {
           where("createdAt", "<", end),
         ));
         setChecklistsHoje(cSnap.size);
+        // Conta os "não conformes" agrupando por veículo (pega o último
+        // checklist do dia de cada veículo — mesmo critério do Painel).
+        const byVeh = new Map(); // vehicleId → [checklists]
+        cSnap.forEach((doc) => {
+          const c = { id: doc.id, ...doc.data() };
+          if (!c.vehicleId) return;
+          if (!byVeh.has(c.vehicleId)) byVeh.set(c.vehicleId, []);
+          byVeh.get(c.vehicleId).push(c);
+        });
+        let ncCount = 0;
+        for (const cs of byVeh.values()) {
+          const last = cs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0];
+          const hasNok = last && (
+            last.hasNonConformity === true ||
+            Object.values(last.answers || {}).some((a) => a === false)
+          );
+          if (hasNok) ncCount += 1;
+        }
+        setNaoConformesHoje(ncCount);
         const vehIdsChecados = new Set();
         cSnap.forEach((doc) => {
           const c = doc.data();
@@ -301,7 +323,7 @@ function FrotaDash() {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4">
         <StatCard icon={Truck} label={VEHICLE_STATUS_LABEL.ACTIVE} value={veicAtivos} accent="#1E3A5F" to="/veiculos" testId="stat-veic-ativos" />
         <StatCard icon={Hourglass} label={VEHICLE_STATUS_LABEL.PENDING_ACTIVATION} value={veicAguardando} accent="#D9A05B" to="/veiculos" testId="stat-veic-aguardando" />
         <StatCard icon={FileText} label="Requerimentos totais" value={reqs} accent="#4A7A8C" to="/requerimentos" testId="stat-reqs" />
@@ -320,6 +342,14 @@ function FrotaDash() {
           accent={paradosHoje.count > 0 ? "#DC2626" : "#10B981"}
           to="/checklists/painel?filter=pendente"
           testId="stat-parados-hoje"
+        />
+        <StatCard
+          icon={Warning}
+          label="Não conformes hoje"
+          value={naoConformesHoje}
+          accent={naoConformesHoje > 0 ? "#DC2626" : "#10B981"}
+          to="/checklists/painel?filter=nao_conforme"
+          testId="stat-nao-conformes-hoje"
         />
         <button
           type="button"

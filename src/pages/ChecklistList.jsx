@@ -158,7 +158,7 @@ export default function ChecklistList() {
   // Lista final (para tabela) — todos os filtros aplicados.
   const filteredItems = useMemo(() => {
     return items.filter((c) => inDateRange(c) && matchType(c) && matchSource(c) && matchVehicle(c) && matchDriver(c) && matchSearch(c));
-
+     
   }, [items, dateStart, dateEnd, typeFilter, sourceFilter, vehicleFilter, driverFilter, search]);
 
   // Para cada dimensão dos filtros avançados, aplicamos TODOS os filtros
@@ -166,22 +166,22 @@ export default function ChecklistList() {
   // "quantos apareceriam se eu clicasse aqui, mantendo os outros filtros".
   const listForType = useMemo(
     () => items.filter((c) => inDateRange(c) && matchSource(c) && matchVehicle(c) && matchDriver(c) && matchSearch(c)),
-
+     
     [items, dateStart, dateEnd, sourceFilter, vehicleFilter, driverFilter, search]
   );
   const listForSource = useMemo(
     () => items.filter((c) => inDateRange(c) && matchType(c) && matchVehicle(c) && matchDriver(c) && matchSearch(c)),
-
+     
     [items, dateStart, dateEnd, typeFilter, vehicleFilter, driverFilter, search]
   );
   const listForVehicle = useMemo(
     () => items.filter((c) => inDateRange(c) && matchType(c) && matchSource(c) && matchDriver(c) && matchSearch(c)),
-
+     
     [items, dateStart, dateEnd, typeFilter, sourceFilter, driverFilter, search]
   );
   const listForDriver = useMemo(
     () => items.filter((c) => inDateRange(c) && matchType(c) && matchSource(c) && matchVehicle(c) && matchSearch(c)),
-
+     
     [items, dateStart, dateEnd, typeFilter, sourceFilter, vehicleFilter, search]
   );
 
@@ -453,89 +453,89 @@ export default function ChecklistList() {
         <MainCollapse>
           <div className="grid lg:grid-cols-4 gap-4">
 
-            {/* tipo */}
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Tipo</div>
-              <div className="space-y-2">
-                <FilterCard
-                  label="Vistoria"
-                  value={listForType.filter(isVistoria).length}
-                  color="#4A7A8C"
-                  active={typeFilter === "VISTORIA"}
-                  onClick={() => setTypeFilter(typeFilter === "VISTORIA" ? null : "VISTORIA")}
-                />
+          {/* tipo */}
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Tipo</div>
+            <div className="space-y-2">
+              <FilterCard
+                label="Vistoria"
+                value={listForType.filter(isVistoria).length}
+                color="#4A7A8C"
+                active={typeFilter === "VISTORIA"}
+                onClick={() => setTypeFilter(typeFilter === "VISTORIA" ? null : "VISTORIA")}
+              />
 
+              <FilterCard
+                label="Diário"
+                value={listForType.filter((c) => !isVistoria(c)).length}
+                color="#1E3A5F"
+                active={typeFilter === "DIARIO"}
+                onClick={() => setTypeFilter(typeFilter === "DIARIO" ? null : "DIARIO")}
+              />
+            </div>
+          </div>
+
+          {/* origem */}
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Origem</div>
+            <div className="space-y-2">
+              <FilterCard
+                label="App"
+                value={listForSource.filter((c) => srcOf(c) === "digital").length}
+                color="#2563EB"
+                active={sourceFilter === "APP"}
+                onClick={() => setSourceFilter(sourceFilter === "APP" ? null : "APP")}
+              />
+
+              <FilterCard
+                label="Papel"
+                value={listForSource.filter((c) => srcOf(c) === "manual").length}
+                color="#8EA694"
+                active={sourceFilter === "PAPEL"}
+                onClick={() => setSourceFilter(sourceFilter === "PAPEL" ? null : "PAPEL")}
+              />
+            </div>
+          </div>
+
+          {/* veículo */}
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Veículo</div>
+            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+              {vehicleTags.length === 0 && (
+                <div className="text-[11px] italic text-[#708278] py-2">Nenhum veículo no período.</div>
+              )}
+              {vehicleTags.map((tag) => (
                 <FilterCard
-                  label="Diário"
-                  value={listForType.filter((c) => !isVistoria(c)).length}
+                  key={tag}
+                  label={tag}
+                  value={listForVehicle.filter((c) => c.vehicleTag === tag).length}
                   color="#1E3A5F"
-                  active={typeFilter === "DIARIO"}
-                  onClick={() => setTypeFilter(typeFilter === "DIARIO" ? null : "DIARIO")}
+                  active={vehicleFilter === tag}
+                  onClick={() => setVehicleFilter(vehicleFilter === tag ? null : tag)}
                 />
-              </div>
+              ))}
             </div>
+          </div>
 
-            {/* origem */}
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Origem</div>
-              <div className="space-y-2">
+          {/* motorista */}
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Motorista</div>
+            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+              {driverNames.length === 0 && (
+                <div className="text-[11px] italic text-[#708278] py-2">Nenhum motorista no período.</div>
+              )}
+              {driverNames.map((name) => (
                 <FilterCard
-                  label="App"
-                  value={listForSource.filter((c) => srcOf(c) === "digital").length}
+                  key={name}
+                  label={name}
+                  value={listForDriver.filter((c) => driverOf(c) === name).length}
                   color="#2563EB"
-                  active={sourceFilter === "APP"}
-                  onClick={() => setSourceFilter(sourceFilter === "APP" ? null : "APP")}
+                  active={driverFilter === name}
+                  onClick={() => setDriverFilter(driverFilter === name ? null : name)}
                 />
-
-                <FilterCard
-                  label="Papel"
-                  value={listForSource.filter((c) => srcOf(c) === "manual").length}
-                  color="#8EA694"
-                  active={sourceFilter === "PAPEL"}
-                  onClick={() => setSourceFilter(sourceFilter === "PAPEL" ? null : "PAPEL")}
-                />
-              </div>
+              ))}
             </div>
-
-            {/* veículo */}
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Veículo</div>
-              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-                {vehicleTags.length === 0 && (
-                  <div className="text-[11px] italic text-[#708278] py-2">Nenhum veículo no período.</div>
-                )}
-                {vehicleTags.map((tag) => (
-                  <FilterCard
-                    key={tag}
-                    label={tag}
-                    value={listForVehicle.filter((c) => c.vehicleTag === tag).length}
-                    color="#1E3A5F"
-                    active={vehicleFilter === tag}
-                    onClick={() => setVehicleFilter(vehicleFilter === tag ? null : tag)}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* motorista */}
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Motorista</div>
-              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-                {driverNames.length === 0 && (
-                  <div className="text-[11px] italic text-[#708278] py-2">Nenhum motorista no período.</div>
-                )}
-                {driverNames.map((name) => (
-                  <FilterCard
-                    key={name}
-                    label={name}
-                    value={listForDriver.filter((c) => driverOf(c) === name).length}
-                    color="#2563EB"
-                    active={driverFilter === name}
-                    onClick={() => setDriverFilter(driverFilter === name ? null : name)}
-                  />
-                ))}
-              </div>
-            </div>
+          </div>
 
           </div>
         </MainCollapse>
@@ -544,20 +544,20 @@ export default function ChecklistList() {
       {/* Resumo dinâmico — só faz sentido quando os filtros avançados estão
           disponíveis (Encarregado/Frota/Admin). Para motorista não exibimos. */}
       {!isMotorista && (
-        <div className="mt-4 grid grid-cols-3 gap-3" data-testid="checklists-summary">
-          <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
-            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Total no filtro</div>
-            <div className="text-2xl font-black text-[#0F1411] leading-none mt-1" data-testid="summary-total">{summary.total}</div>
-          </div>
-          <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
-            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Vistorias</div>
-            <div className="text-2xl font-black text-[#2E4F5C] leading-none mt-1" data-testid="summary-vistorias">{summary.vistorias}</div>
-          </div>
-          <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
-            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Diários</div>
-            <div className="text-2xl font-black text-[#1E3A5F] leading-none mt-1" data-testid="summary-diarios">{summary.diarios}</div>
-          </div>
+      <div className="mt-4 grid grid-cols-3 gap-3" data-testid="checklists-summary">
+        <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
+          <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Total no filtro</div>
+          <div className="text-2xl font-black text-[#0F1411] leading-none mt-1" data-testid="summary-total">{summary.total}</div>
         </div>
+        <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
+          <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Vistorias</div>
+          <div className="text-2xl font-black text-[#2E4F5C] leading-none mt-1" data-testid="summary-vistorias">{summary.vistorias}</div>
+        </div>
+        <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
+          <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Diários</div>
+          <div className="text-2xl font-black text-[#1E3A5F] leading-none mt-1" data-testid="summary-diarios">{summary.diarios}</div>
+        </div>
+      </div>
       )}
 
       {/* Auditoria — veículos ativos SEM checklist no período selecionado.
@@ -623,14 +623,14 @@ export default function ChecklistList() {
                           {v._motoristas.length === 0
                             ? <em className="text-[#9CA3AF]">nenhum titular</em>
                             : v._motoristas.map((m, i) => (
-                              <span key={m.id || `${m.name}-${i}`} className="inline-flex items-center gap-1">
-                                {m.name || <em className="text-[#9CA3AF]">(sem nome)</em>}
-                                {m.phone && (
-                                  <WaChip phone={m.phone} message={msgMotorista} testId={`wa-mot-${v.id}-${i}`} />
-                                )}
-                                {i < v._motoristas.length - 1 && <span className="text-[#CBD5E1]">·</span>}
-                              </span>
-                            ))}
+                                <span key={m.id || `${m.name}-${i}`} className="inline-flex items-center gap-1">
+                                  {m.name || <em className="text-[#9CA3AF]">(sem nome)</em>}
+                                  {m.phone && (
+                                    <WaChip phone={m.phone} message={msgMotorista} testId={`wa-mot-${v.id}-${i}`} />
+                                  )}
+                                  {i < v._motoristas.length - 1 && <span className="text-[#CBD5E1]">·</span>}
+                                </span>
+                              ))}
                         </div>
                       </div>
                       <div className="text-right shrink-0 self-center">
@@ -760,8 +760,8 @@ export default function ChecklistList() {
               <div className="flex items-center gap-3">
                 <span
                   className={`text-[10px] uppercase tracking-[0.15em] font-bold px-2.5 py-1 rounded-md border ${isVistoria
-                    ? "bg-[#4A7A8C]/15 text-[#2E4F5C] border-[#4A7A8C]/40"
-                    : "bg-[#1E3A5F]/15 text-[#0A1A2E] border-[#1E3A5F]/40"
+                      ? "bg-[#4A7A8C]/15 text-[#2E4F5C] border-[#4A7A8C]/40"
+                      : "bg-[#1E3A5F]/15 text-[#0A1A2E] border-[#1E3A5F]/40"
                     }`}
                 >
                   {sourceLabel}
