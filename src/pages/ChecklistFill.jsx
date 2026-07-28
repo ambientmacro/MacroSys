@@ -83,6 +83,42 @@ export default function ChecklistFill({ mode = "digital" }) {
   const canDoFirstExecution = profile.role === ROLES.FROTA || profile.role === ROLES.ADMIN;
   const blockedByFirstExecution = isFirstExecution && !canDoFirstExecution;
 
+  // ===========================================================================
+  // Regra: Motorista só pode preencher 1 checklist por veículo por dia
+  // ---------------------------------------------------------------------------
+  // Se o motorista (mode digital + role MOTORISTA) selecionar um veículo do
+  // qual JÁ existe um checklist dele hoje (`date == YYYY-MM-DD atual`),
+  // bloqueamos o preenchimento e mostramos um banner com link para o
+  // registro existente. Motorista pode ter múltiplos veículos vinculados —
+  // faz um por cada, mas não dois do mesmo. Encarregado/Frota/Admin NÃO
+  // sofrem essa restrição (podem lançar manual, vistoria etc.).
+  // ===========================================================================
+  const [alreadyFilledToday, setAlreadyFilledToday] = useState(null);
+  useEffect(() => {
+    setAlreadyFilledToday(null);
+    if (mode !== "digital" || profile.role !== ROLES.MOTORISTA) return;
+    if (!vehicleId) return;
+    const todayISO = new Date().toISOString().slice(0, 10);
+    (async () => {
+      // Duas condições `==` + filtro `date` no cliente para dispensar
+      // criação de índice composto no Firestore.
+      const q = query(
+        collection(db, "checklists"),
+        where("vehicleId", "==", vehicleId),
+        where("filledByUserId", "==", profile.id),
+      );
+      const snap = await getDocs(q);
+      const existing = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .find((c) => {
+          if (c.date && c.date === todayISO) return true;
+          const created = c.createdAt?.toDate?.();
+          return created && created.toISOString().slice(0, 10) === todayISO;
+        });
+      if (existing) setAlreadyFilledToday(existing);
+    })();
+  }, [vehicleId, mode, profile.role, profile.id]);
+
   // Veículos do motorista logado (motorista titular). Suporta tanto a forma
   // nova `motoristasTitularesIds: [...]` quanto a legada `motoristaTitularId`.
   // No modo "manual" (encarregado) usamos a lista completa.
@@ -249,6 +285,15 @@ export default function ChecklistFill({ mode = "digital" }) {
       toast.error("Vistoria de Entrada", { description: "Apenas o Adm de Frota pode lançar a 1ª execução deste veículo." });
       return;
     }
+    // Defesa em profundidade: mesmo se o banner falhar, a submissão é
+    // bloqueada. O motorista NÃO pode registrar dois checklists no mesmo
+    // dia para o mesmo veículo.
+    if (alreadyFilledToday) {
+      toast.error("Checklist já enviado hoje", {
+        description: "Você já registrou o checklist deste veículo hoje. Não é possível preencher novamente.",
+      });
+      return;
+    }
     // Validação de itens obrigatórios do template ANTES de disparar o busy.
     // Para itens do tipo "photo" (ou com `allowPhoto`) marcados como
     // required, exige o anexo — a UI já mostra o `*` mas antes o motorista
@@ -370,7 +415,7 @@ ${window.location.origin}/checklists`;
         <div className="mt-4 bg-[#4A7A8C]/15 border border-[#4A7A8C]/40 rounded-md p-4 flex gap-3" data-testid="banner-vistoria-entrada">
           <ShieldCheck size={18} weight="duotone" className="text-[#2E4F5C] mt-0.5 shrink-0" />
           <div className="text-xs text-[#0F2542] leading-relaxed">
-            <strong>1ª execução deste veículo — Vistoria de Entrada.</strong> Esta é a única vez que o checklist é lançado pelo <strong>Adm de Frota</strong> no recebimento do equipamento. Daqui pra frente, todas as execuções serão "Diário" e poderão ser feitas pelo motorista/encarregado.
+            <strong>1ª execução deste veículo — Vistoria de Entrada.</strong> Esta é a única vez que o checklist é lançado pelo <strong>Adm de Frota</strong> no recebimento do equipamento. Daqui pra frente, todas as execuções serão &quot;Diário&quot; e poderão ser feitas pelo motorista/encarregado.
           </div>
         </div>
       )}
@@ -379,6 +424,30 @@ ${window.location.origin}/checklists`;
           <ShieldCheck size={18} weight="duotone" className="text-[#8B3A26] mt-0.5 shrink-0" />
           <div className="text-xs text-[#5B1F0D] leading-relaxed">
             Este veículo ainda não tem <strong>Vistoria de Entrada</strong>. Apenas o <strong>Adm de Frota</strong> pode lançar a 1ª execução. Avise o gestor para liberar o equipamento.
+          </div>
+        </div>
+      )}
+      {/* Banner: motorista já preencheu HOJE — bloqueia novo envio e leva
+          para o checklist existente. Só aparece no modo digital + role
+          MOTORISTA (regra específica do perfil). */}
+      {alreadyFilledToday && (
+        <div className="mt-4 bg-[#FEF3C7] border border-[#F59E0B]/40 rounded-md p-5 flex gap-3" data-testid="banner-ja-preenchido">
+          <CheckCircle size={22} weight="duotone" className="text-[#92400E] mt-0.5 shrink-0" />
+          <div className="text-sm text-[#92400E] leading-relaxed flex-1">
+            <strong className="block text-base mb-1">Checklist já enviado hoje.</strong>
+            Você já registrou o checklist deste veículo hoje ({new Date().toLocaleDateString("pt-BR")}).
+            <span className="block mt-1 text-xs">
+              Não é possível preencher ou editar novamente. Se precisar corrigir algo,
+              procure o Encarregado ou o Adm de Frota.
+            </span>
+            <button
+              type="button"
+              onClick={() => navigate(`/checklists/${alreadyFilledToday.id}`)}
+              data-testid="btn-ver-checklist-existente"
+              className="mt-3 inline-flex items-center gap-2 bg-[#92400E] text-white px-4 py-2 rounded-md text-xs font-bold uppercase tracking-[0.15em] hover:bg-[#78350F]"
+            >
+              <Printer size={14} /> Ver o checklist enviado
+            </button>
           </div>
         </div>
       )}
@@ -495,8 +564,10 @@ ${window.location.origin}/checklists`;
         )}
         {/* Itens do checklist — só renderiza depois que um veículo é escolhido.
             Sem essa condição, um template "residual" (de uma seleção anterior)
-            deixava o encarregado preencher perguntas sem veículo. */}
-        {template && vehicleId && (
+            deixava o encarregado preencher perguntas sem veículo.
+            Se o motorista JÁ preencheu hoje (`alreadyFilledToday`), também
+            escondemos o formulário — o banner amarelo acima cuida do aviso. */}
+        {template && vehicleId && !alreadyFilledToday && (
           <div className="border-t border-[#E2E8E4] pt-5 space-y-2">
             {template.items.map((item) => (
               <div key={item.id} className="py-3 border-b border-[#E2E8E4] last:border-0">

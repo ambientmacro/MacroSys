@@ -1,6 +1,10 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 // Vite uses import.meta.env.VITE_* (legacy REACT_APP_* fallback for compatibility)
@@ -17,7 +21,23 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Firestore com persistência local (IndexedDB) — habilita cache entre sessões
+// e entre abas. Efeitos:
+//   • Navegações repetidas retornam do cache primeiro (Δ zero leituras).
+//   • `onSnapshot` continua atualizando quando o dado muda no servidor.
+//   • Se o usuário quiser forçar refresh do banco: limpar "Application data"
+//     do site nas DevTools (ou clicar em "Update / Skip waiting" no PWA).
+//   • O tabManager permite múltiplas abas simultâneas sem conflito de lock.
+// Fallback: se persistência falhar (browser em modo privado, quota etc.),
+// o Firestore volta para in-memory silenciosamente — o app continua
+// funcionando, só sem economia de leituras.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
+});
+
 export const storage = getStorage(app);
 
 // Secondary Firebase instance — used so admin can create users

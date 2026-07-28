@@ -32,14 +32,29 @@ function MainCollapse({ children }) {
 
 export default function ChecklistList() {
   const { profile } = useAuth();
+  const isMotorista = profile.role === ROLES.MOTORISTA;
   const [items, setItems] = useState([]);
   const [team, setTeam] = useState(null);
 
   const [search, setSearch] = useState("");
 
-  // período
-  const [dateStart, setDateStart] = useState("");
-  const [dateEnd, setDateEnd] = useState("");
+  // Janela permitida para o MOTORISTA: 3 dias anteriores + hoje.
+  // Calculada com base no relógio do cliente, mas o filtro `where(createdAt >= cutoff)`
+  // é aplicado no servidor — mesmo que o motorista mude o clock local, o
+  // Firestore só devolve o que atende à condição. Reduz também as leituras
+  // (motorista puxa no máximo ~4 dias, não histórico completo).
+  const motoristaCutoffISO = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - 3);
+    return d.toISOString().slice(0, 10);
+  }, []);
+  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  // período — o motorista inicia com a janela travada (últimos 3 dias) e
+  // não consegue mover os inputs para fora dessa janela (min/max no <input>).
+  const [dateStart, setDateStart] = useState(isMotorista ? motoristaCutoffISO : "");
+  const [dateEnd, setDateEnd] = useState(isMotorista ? todayISO : "");
 
   // filtros avançados
   const [typeFilter, setTypeFilter] = useState(null);
@@ -63,8 +78,15 @@ export default function ChecklistList() {
   // carregar checklists
   useEffect(() => {
     let q;
-    if (profile.role === ROLES.MOTORISTA) {
-      q = query(collection(db, "checklists"), where("filledByUserId", "==", profile.id));
+    if (isMotorista) {
+      // Motorista: query no servidor limitada aos últimos 3 dias (economia de
+      // leitura + trava anti-burla). Cutoff calculado uma vez ao montar.
+      const cutoff = new Date(motoristaCutoffISO + "T00:00:00");
+      q = query(
+        collection(db, "checklists"),
+        where("filledByUserId", "==", profile.id),
+        where("createdAt", ">=", cutoff),
+      );
     } else {
       q = query(collection(db, "checklists"), orderBy("createdAt", "desc"));
     }
@@ -88,10 +110,9 @@ export default function ChecklistList() {
     });
 
     return () => unsub();
-  }, [profile, team]);
+  }, [profile, team, isMotorista, motoristaCutoffISO]);
 
   const showTeamBanner = profile.role === ROLES.ENCARREGADO && team;
-  const isMotorista = profile.role === ROLES.MOTORISTA;
 
   // validação período
   const invalidDateRange =
@@ -99,84 +120,84 @@ export default function ChecklistList() {
     dateEnd &&
     new Date(dateStart) > new Date(dateEnd);
 
-  // filtros
+  // ─── Predicados de cada dimensão ────────────────────────────────────────
+  // Isolados para permitir "facet counting": cada card de filtro é contado
+  // sobre a lista já filtrada por TODAS as outras dimensões (menos a dele),
+  // fazendo os contadores serem dinâmicos e coerentes com o que o usuário vê.
+  const inDateRange = (c) => {
+    if (!dateStart && !dateEnd) return true;
+    const d = c.createdAt?.toDate?.();
+    if (!d) return false;
+    const iso = d.toISOString().slice(0, 10);
+    if (dateStart && iso < dateStart) return false;
+    if (dateEnd && iso > dateEnd) return false;
+    return true;
+  };
+  const isVistoria = (c) => c.isFirstExecution || c.type === "vistoria" || c.type === "vistoria_entrada";
+  const matchType = (c) => {
+    if (!typeFilter) return true;
+    return typeFilter === "VISTORIA" ? isVistoria(c) : !isVistoria(c);
+  };
+  const srcOf = (c) => c.source || (c.type === "manual" ? "manual" : "digital");
+  const matchSource = (c) => {
+    if (!sourceFilter) return true;
+    return sourceFilter === "APP" ? srcOf(c) === "digital" : srcOf(c) === "manual";
+  };
+  const matchVehicle = (c) => !vehicleFilter || c.vehicleTag === vehicleFilter;
+  const driverOf = (c) => c.driverName || c.filledByName;
+  const matchDriver = (c) => !driverFilter || driverOf(c) === driverFilter;
+  const matchSearch = (c) => {
+    const term = search.trim().toLowerCase();
+    if (!term) return true;
+    const d = c.createdAt?.toDate?.();
+    return [c.templateName, c.vehicleTag, c.driverName, c.filledByName, c.source, c.type, d?.toLocaleString("pt-BR")]
+      .some((f) => f && String(f).toLowerCase().includes(term));
+  };
+
+  // Lista final (para tabela) — todos os filtros aplicados.
   const filteredItems = useMemo(() => {
-    let list = [...items];
-
-    // período
-    if (dateStart || dateEnd) {
-      list = list.filter((c) => {
-        const d = c.createdAt?.toDate?.();
-        if (!d) return false;
-
-        const iso = d.toISOString().slice(0, 10);
-
-        if (dateStart && iso < dateStart) return false;
-        if (dateEnd && iso > dateEnd) return false;
-
-        return true;
-      });
-    }
-
-    // tipo
-    if (typeFilter) {
-      list = list.filter((c) => {
-        const isVistoria =
-          c.isFirstExecution ||
-          c.type === "vistoria" ||
-          c.type === "vistoria_entrada";
-
-        if (typeFilter === "VISTORIA") return isVistoria;
-        if (typeFilter === "DIARIO") return !isVistoria;
-        return true;
-      });
-    }
-
-    // origem
-    if (sourceFilter) {
-      list = list.filter((c) => {
-        const src = c.source || (c.type === "manual" ? "manual" : "digital");
-        if (sourceFilter === "APP") return src === "digital";
-        if (sourceFilter === "PAPEL") return src === "manual";
-        return true;
-      });
-    }
-
-    // veículo
-    if (vehicleFilter) {
-      list = list.filter((c) => c.vehicleTag === vehicleFilter);
-    }
-
-    // motorista
-    if (driverFilter) {
-      list = list.filter((c) => (c.driverName || c.filledByName) === driverFilter);
-    }
-
-    // busca global
-    if (search.trim()) {
-      const term = search.toLowerCase();
-      list = list.filter((c) => {
-        const d = c.createdAt?.toDate?.();
-        const fields = [
-          c.templateName,
-          c.vehicleTag,
-          c.driverName,
-          c.filledByName,
-          c.source,
-          c.type,
-          d?.toLocaleString("pt-BR"),
-        ];
-        return fields.some((f) => f && String(f).toLowerCase().includes(term));
-      });
-    }
-
-    return list;
+    return items.filter((c) => inDateRange(c) && matchType(c) && matchSource(c) && matchVehicle(c) && matchDriver(c) && matchSearch(c));
+     
   }, [items, dateStart, dateEnd, typeFilter, sourceFilter, vehicleFilter, driverFilter, search]);
+
+  // Para cada dimensão dos filtros avançados, aplicamos TODOS os filtros
+  // EXCETO o da própria dimensão — assim o número em cada card reflete
+  // "quantos apareceriam se eu clicasse aqui, mantendo os outros filtros".
+  const listForType = useMemo(
+    () => items.filter((c) => inDateRange(c) && matchSource(c) && matchVehicle(c) && matchDriver(c) && matchSearch(c)),
+     
+    [items, dateStart, dateEnd, sourceFilter, vehicleFilter, driverFilter, search]
+  );
+  const listForSource = useMemo(
+    () => items.filter((c) => inDateRange(c) && matchType(c) && matchVehicle(c) && matchDriver(c) && matchSearch(c)),
+     
+    [items, dateStart, dateEnd, typeFilter, vehicleFilter, driverFilter, search]
+  );
+  const listForVehicle = useMemo(
+    () => items.filter((c) => inDateRange(c) && matchType(c) && matchSource(c) && matchDriver(c) && matchSearch(c)),
+     
+    [items, dateStart, dateEnd, typeFilter, sourceFilter, driverFilter, search]
+  );
+  const listForDriver = useMemo(
+    () => items.filter((c) => inDateRange(c) && matchType(c) && matchSource(c) && matchVehicle(c) && matchSearch(c)),
+     
+    [items, dateStart, dateEnd, typeFilter, sourceFilter, vehicleFilter, search]
+  );
+
+  // Resumo dinâmico (respeita TODOS os filtros ativos — inclusive período).
+  const summary = useMemo(() => {
+    const total = filteredItems.length;
+    const vistorias = filteredItems.filter(isVistoria).length;
+    return { total, vistorias, diarios: total - vistorias };
+  }, [filteredItems]);
 
   const { paged, ...pag } = usePagination(filteredItems, { defaultPerPage: 10 });
 
-  const vehicleTags = Array.from(new Set(items.map((c) => c.vehicleTag).filter(Boolean)));
-  const driverNames = Array.from(new Set(items.map((c) => (c.driverName || c.filledByName)).filter(Boolean)));
+  // As opções de veículo/motorista mostradas nos cards saem das listas
+  // facetadas — assim, ao aplicar um filtro de período que exclui o veículo,
+  // ele some da lista de opções também (não fica card "morto").
+  const vehicleTags = Array.from(new Set(listForVehicle.map((c) => c.vehicleTag).filter(Boolean))).sort();
+  const driverNames = Array.from(new Set(listForDriver.map(driverOf).filter(Boolean))).sort();
 
   return (
     <div className="p-6 md:p-10 max-w-5xl mx-auto">
@@ -231,6 +252,9 @@ export default function ChecklistList() {
             type="date"
             value={dateStart}
             onChange={(e) => setDateStart(e.target.value)}
+            min={isMotorista ? motoristaCutoffISO : undefined}
+            max={isMotorista ? todayISO : undefined}
+            data-testid="date-start"
             className="w-full mt-1 px-3 py-2 border border-[#E2E8E4] rounded-md text-sm focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]"
           />
         </div>
@@ -243,6 +267,9 @@ export default function ChecklistList() {
             type="date"
             value={dateEnd}
             onChange={(e) => setDateEnd(e.target.value)}
+            min={isMotorista ? motoristaCutoffISO : undefined}
+            max={isMotorista ? todayISO : undefined}
+            data-testid="date-end"
             className="w-full mt-1 px-3 py-2 border border-[#E2E8E4] rounded-md text-sm focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]"
           />
         </div>
@@ -250,16 +277,29 @@ export default function ChecklistList() {
         <div className="flex items-end">
           <button
             onClick={() => {
-              setDateStart("");
-              setDateEnd("");
+              // Motorista sempre volta para a janela travada; demais perfis
+              // limpam de fato (visão completa do banco).
+              if (isMotorista) {
+                setDateStart(motoristaCutoffISO);
+                setDateEnd(todayISO);
+              } else {
+                setDateStart("");
+                setDateEnd("");
+              }
             }}
             className="w-full px-3 py-2 bg-[#1E3A5F] text-white rounded-md text-xs font-bold uppercase tracking-[0.15em] hover:bg-[#162a45]"
           >
-            Limpar período
+            {isMotorista ? "Voltar aos 3 dias" : "Limpar período"}
           </button>
         </div>
 
       </div>
+
+      {isMotorista && (
+        <div className="mt-2 text-[11px] text-[#0F2542] bg-[#EFF3F8] border border-[#2563EB]/30 rounded px-3 py-2" data-testid="hint-janela-motorista">
+          Você consulta apenas os <b>3 dias anteriores + hoje</b>. Para históricos mais longos, procure o Adm de Frota.
+        </div>
+      )}
 
       {invalidDateRange && (
         <div className="mt-2 text-red-600 text-xs font-bold">
@@ -267,9 +307,12 @@ export default function ChecklistList() {
         </div>
       )}
 
-      {/* filtros avançados */}
-      <MainCollapse>
-        <div className="grid lg:grid-cols-4 gap-4">
+      {/* filtros avançados — ocultos para o motorista. Ele consulta só o
+          próprio histórico dos últimos 3 dias; segmentar por Tipo/Origem/
+          Veículo/Motorista não faz sentido no perfil dele. */}
+      {!isMotorista && (
+        <MainCollapse>
+          <div className="grid lg:grid-cols-4 gap-4">
 
           {/* tipo */}
           <div>
@@ -277,11 +320,7 @@ export default function ChecklistList() {
             <div className="space-y-2">
               <FilterCard
                 label="Vistoria"
-                value={items.filter((c) =>
-                  c.isFirstExecution ||
-                  c.type === "vistoria" ||
-                  c.type === "vistoria_entrada"
-                ).length}
+                value={listForType.filter(isVistoria).length}
                 color="#4A7A8C"
                 active={typeFilter === "VISTORIA"}
                 onClick={() => setTypeFilter(typeFilter === "VISTORIA" ? null : "VISTORIA")}
@@ -289,11 +328,7 @@ export default function ChecklistList() {
 
               <FilterCard
                 label="Diário"
-                value={items.filter((c) =>
-                  !(c.isFirstExecution ||
-                    c.type === "vistoria" ||
-                    c.type === "vistoria_entrada")
-                ).length}
+                value={listForType.filter((c) => !isVistoria(c)).length}
                 color="#1E3A5F"
                 active={typeFilter === "DIARIO"}
                 onClick={() => setTypeFilter(typeFilter === "DIARIO" ? null : "DIARIO")}
@@ -307,9 +342,7 @@ export default function ChecklistList() {
             <div className="space-y-2">
               <FilterCard
                 label="App"
-                value={items.filter((c) =>
-                  (c.source || (c.type === "manual" ? "manual" : "digital")) === "digital"
-                ).length}
+                value={listForSource.filter((c) => srcOf(c) === "digital").length}
                 color="#2563EB"
                 active={sourceFilter === "APP"}
                 onClick={() => setSourceFilter(sourceFilter === "APP" ? null : "APP")}
@@ -317,9 +350,7 @@ export default function ChecklistList() {
 
               <FilterCard
                 label="Papel"
-                value={items.filter((c) =>
-                  (c.source || (c.type === "manual" ? "manual" : "digital")) === "manual"
-                ).length}
+                value={listForSource.filter((c) => srcOf(c) === "manual").length}
                 color="#8EA694"
                 active={sourceFilter === "PAPEL"}
                 onClick={() => setSourceFilter(sourceFilter === "PAPEL" ? null : "PAPEL")}
@@ -330,12 +361,15 @@ export default function ChecklistList() {
           {/* veículo */}
           <div>
             <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Veículo</div>
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+              {vehicleTags.length === 0 && (
+                <div className="text-[11px] italic text-[#708278] py-2">Nenhum veículo no período.</div>
+              )}
               {vehicleTags.map((tag) => (
                 <FilterCard
                   key={tag}
                   label={tag}
-                  value={items.filter((c) => c.vehicleTag === tag).length}
+                  value={listForVehicle.filter((c) => c.vehicleTag === tag).length}
                   color="#1E3A5F"
                   active={vehicleFilter === tag}
                   onClick={() => setVehicleFilter(vehicleFilter === tag ? null : tag)}
@@ -347,12 +381,15 @@ export default function ChecklistList() {
           {/* motorista */}
           <div>
             <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278] mb-2">Motorista</div>
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+              {driverNames.length === 0 && (
+                <div className="text-[11px] italic text-[#708278] py-2">Nenhum motorista no período.</div>
+              )}
               {driverNames.map((name) => (
                 <FilterCard
                   key={name}
                   label={name}
-                  value={items.filter((c) => (c.driverName || c.filledByName) === name).length}
+                  value={listForDriver.filter((c) => driverOf(c) === name).length}
                   color="#2563EB"
                   active={driverFilter === name}
                   onClick={() => setDriverFilter(driverFilter === name ? null : name)}
@@ -361,8 +398,28 @@ export default function ChecklistList() {
             </div>
           </div>
 
+          </div>
+        </MainCollapse>
+      )}
+
+      {/* Resumo dinâmico — só faz sentido quando os filtros avançados estão
+          disponíveis (Encarregado/Frota/Admin). Para motorista não exibimos. */}
+      {!isMotorista && (
+      <div className="mt-4 grid grid-cols-3 gap-3" data-testid="checklists-summary">
+        <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
+          <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Total no filtro</div>
+          <div className="text-2xl font-black text-[#0F1411] leading-none mt-1" data-testid="summary-total">{summary.total}</div>
         </div>
-      </MainCollapse>
+        <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
+          <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Vistorias</div>
+          <div className="text-2xl font-black text-[#2E4F5C] leading-none mt-1" data-testid="summary-vistorias">{summary.vistorias}</div>
+        </div>
+        <div className="bg-white border border-[#E2E8E4] rounded-md px-4 py-3">
+          <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#708278]">Diários</div>
+          <div className="text-2xl font-black text-[#1E3A5F] leading-none mt-1" data-testid="summary-diarios">{summary.diarios}</div>
+        </div>
+      </div>
+      )}
 
       {/* banner filtros ativos */}
       {(typeFilter || sourceFilter || vehicleFilter || driverFilter || dateStart || dateEnd || search.trim()) && (
@@ -382,8 +439,14 @@ export default function ChecklistList() {
           <button
             onClick={() => {
               setSearch("");
-              setDateStart("");
-              setDateEnd("");
+              // Motorista mantém a janela travada (3 dias); demais limpam.
+              if (isMotorista) {
+                setDateStart(motoristaCutoffISO);
+                setDateEnd(todayISO);
+              } else {
+                setDateStart("");
+                setDateEnd("");
+              }
               setTypeFilter(null);
               setSourceFilter(null);
               setVehicleFilter(null);

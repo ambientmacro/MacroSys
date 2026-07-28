@@ -14,7 +14,7 @@ setTimeout(() => {
     s.classList.add("is-out");
     setTimeout(() => s.remove(), 450);
   }
-}, 1500);
+}, 8000);
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
