@@ -1,0 +1,243 @@
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
+import { db } from "../lib/firebase";
+import { useAuth } from "../contexts/AuthContext";
+import { VEHICLE_STATUS, ROLES } from "../lib/constants";
+import { vehicleLabel } from "../lib/vehicleLabel";
+import { CheckCircle, XCircle, Truck, Clock, Warning, ChartBar } from "@phosphor-icons/react";
+
+/**
+ * Painel de Checklists do Dia.
+ *
+ * - Frota / Admin: vê todos os veículos ativos.
+ * - Encarregado: vê apenas os veículos da(s) sua(s) equipe(s).
+ *
+ * Métricas exibidas:
+ *   • Total de veículos ativos
+ *   • Checklists feitos hoje (✅)
+ *   • Pendentes (sem checklist hoje) (⚠️)
+ *   • Não-conformes hoje (❌)
+ */
+export default function ChecklistsPainel() {
+  const { profile } = useAuth();
+  const navigate = useNavigate();
+  const [vehicles, setVehicles] = useState([]);
+  const [todayChecklists, setTodayChecklists] = useState([]);
+  const [myTeams, setMyTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
+  // Filtro ativo dos cards de métricas: "todos" | "ok" | "pendente" | "nao_conforme"
+  // Aceita também `?filter=<valor>` na querystring para permitir deep-link a
+  // partir de outras telas (ex.: card do dashboard do Frota abrindo já em
+  // "Checklist OK"). Valores desconhecidos caem em "todos".
+  const [searchParams, setSearchParams] = useSearchParams();
+  const allowedFilters = ["todos", "ok", "pendente", "nao_conforme"];
+  const initialFilter = allowedFilters.includes(searchParams.get("filter")) ? searchParams.get("filter") : "todos";
+  const [filter, _setFilter] = useState(initialFilter);
+  // Wrapper que também sincroniza a querystring (para o usuário poder
+  // compartilhar o link e para o botão "voltar" preservar o estado).
+  const setFilter = (v) => {
+    _setFilter(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === "todos") next.delete("filter");
+    else next.set("filter", v);
+    setSearchParams(next, { replace: true });
+  };
+
+  const isEncarregado = profile.role === ROLES.ENCARREGADO;
+
+  useEffect(() => {
+    let unsubV = null, unsubC = null;
+    (async () => {
+      // Equipes do encarregado, se aplicável.
+      if (isEncarregado) {
+        const t = await getDocs(query(collection(db, "teams"), where("encarregadoId", "==", profile.id)));
+        setMyTeams(t.docs.map((d) => ({ id: d.id, ...d.data() })));
+      }
+
+      // Veículos ativos.
+      unsubV = onSnapshot(query(collection(db, "vehicles"), where("status", "==", VEHICLE_STATUS.ACTIVE)), (snap) => {
+        setVehicles(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      });
+
+      // Checklists do dia. Usamos `createdAt >= início do dia` que é mais
+      // robusto que o campo string `date` (que nem sempre estava presente em
+      // versões antigas — bug que deixava equipamento pendente após preencher).
+      const start = new Date(); start.setHours(0, 0, 0, 0);
+      unsubC = onSnapshot(
+        query(collection(db, "checklists"), where("createdAt", ">=", start)),
+        (snap) => {
+          setTodayChecklists(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+          setLoading(false);
+        },
+      );
+    })();
+    return () => { unsubV?.(); unsubC?.(); };
+  }, [profile.id, isEncarregado]);
+
+  // Para encarregado: filtra veículos pela equipe.
+  const visibleVehicles = useMemo(() => {
+    if (!isEncarregado) return vehicles;
+    const driversIds = new Set();
+    myTeams.forEach((t) => (t.driversIds || []).forEach((id) => driversIds.add(id)));
+    return vehicles.filter((v) => {
+      const tit = Array.isArray(v.motoristasTitularesIds) ? v.motoristasTitularesIds : (v.motoristaTitularId ? [v.motoristaTitularId] : []);
+      return tit.some((id) => driversIds.has(id));
+    });
+  }, [vehicles, myTeams, isEncarregado]);
+
+  // Cruzamento veículo × checklist hoje.
+  const rows = useMemo(() => {
+    return visibleVehicles.map((v) => {
+      const cs = todayChecklists.filter((c) => c.vehicleId === v.id);
+      const lastChecklist = cs.length > 0 ? cs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0] : null;
+      // Não-conformidade derivada das respostas (item com answer === false).
+      // Mantém compat com docs antigos que tinham `hasNonConformity` salvo.
+      const hasNok = lastChecklist && (
+        lastChecklist.hasNonConformity === true ||
+        Object.values(lastChecklist.answers || {}).some((a) => a === false)
+      );
+      const status = !lastChecklist ? "pendente" : (hasNok ? "nao_conforme" : "ok");
+      return { vehicle: v, checklist: lastChecklist, status };
+    });
+  }, [visibleVehicles, todayChecklists]);
+
+  const metrics = useMemo(() => ({
+    total: rows.length,
+    ok: rows.filter((r) => r.status === "ok").length,
+    pendentes: rows.filter((r) => r.status === "pendente").length,
+    naoConformes: rows.filter((r) => r.status === "nao_conforme").length,
+  }), [rows]);
+
+  // Lista filtrada pelo card clicado.
+  const filteredRows = useMemo(() => {
+    if (filter === "todos") return rows;
+    return rows.filter((r) => r.status === filter);
+  }, [rows, filter]);
+
+  return (
+    <div className="px-4 sm:px-8 py-8 max-w-7xl mx-auto" data-testid="page-checklists-painel">
+      <div className="mb-6">
+        <div className="text-[10px] uppercase tracking-[0.25em] text-[#708278] font-bold">{isEncarregado ? "Encarregado · Equipe" : "Frota"}</div>
+        <h1 className="font-[Outfit,sans-serif] text-3xl font-black tracking-tight text-[#0F1411] mt-1 flex items-center gap-2">
+          <ChartBar size={28} className="text-[#1E3A5F]" weight="duotone" /> Painel de Checklists do Dia
+        </h1>
+        <p className="text-sm text-[#4A564F] mt-1">Status diário {new Date().toLocaleDateString("pt-BR")} — atualiza em tempo real.</p>
+      </div>
+
+      <div className="grid sm:grid-cols-4 gap-3 mb-6">
+        <Card label="Veículos ativos" value={metrics.total} color="#1E3A5F" icon={Truck} testId="m-total"
+          active={filter === "todos"} onClick={() => setFilter("todos")} />
+        <Card label="Checklist OK" value={metrics.ok} color="#10B981" icon={CheckCircle} testId="m-ok"
+          active={filter === "ok"} onClick={() => setFilter(filter === "ok" ? "todos" : "ok")} />
+        <Card label="Pendentes hoje" value={metrics.pendentes} color="#D9A05B" icon={Clock} testId="m-pendentes"
+          active={filter === "pendente"} onClick={() => setFilter(filter === "pendente" ? "todos" : "pendente")} />
+        <Card label="Não conformes" value={metrics.naoConformes} color="#DC2626" icon={Warning} testId="m-naoconformes"
+          active={filter === "nao_conforme"} onClick={() => setFilter(filter === "nao_conforme" ? "todos" : "nao_conforme")} />
+      </div>
+
+      {filter !== "todos" && (
+        <div className="mb-3 flex items-center gap-2 text-[11px] text-[#4A564F]" data-testid="filter-info">
+          <span className="font-bold uppercase tracking-[0.15em] text-[#708278]">Filtro ativo:</span>
+          <span className="bg-[#0F2542] text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-[0.1em]">
+            {filter === "ok" ? "Checklist OK" : filter === "pendente" ? "Pendentes hoje" : "Não conformes"}
+          </span>
+          <button onClick={() => setFilter("todos")} data-testid="filter-clear" className="text-[#1E3A5F] font-bold uppercase tracking-[0.15em] hover:underline">
+            Limpar
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="bg-white border border-[#E2E8E4] rounded-md p-10 text-center text-sm text-[#708278]">Carregando…</div>
+      ) : rows.length === 0 ? (
+        <div className="bg-white border border-dashed border-[#E2E8E4] rounded-md p-10 text-center">
+          <Truck size={40} className="mx-auto text-[#708278]" weight="duotone" />
+          <div className="text-sm text-[#4A564F] mt-3">
+            {isEncarregado ? "Nenhum veículo na sua equipe." : "Nenhum veículo ativo no momento."}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white border border-[#E2E8E4] rounded-md overflow-hidden">
+          <div className="overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-[#F5F7FA] border-b border-[#E2E8E4]">
+                <tr>
+                  <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Status</th>
+                  <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">Veículo</th>
+                  <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3 hidden sm:table-cell">Motorista</th>
+                  <th className="text-left text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3 hidden md:table-cell">Hora</th>
+                  <th className="text-right text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278] px-4 py-3">—</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map(({ vehicle: v, checklist: c, status }) => (
+                  <tr key={v.id} className="border-b border-[#E2E8E4] last:border-0 hover:bg-[#F5F7FA]" data-testid={`row-${v.id}`}>
+                    <td className="px-4 py-3">
+                      {status === "ok" && <span className="inline-flex items-center gap-1 text-[#10B981] text-xs font-bold uppercase tracking-[0.15em]"><CheckCircle size={14} weight="fill" /> OK</span>}
+                      {status === "pendente" && <span className="inline-flex items-center gap-1 text-[#D9A05B] text-xs font-bold uppercase tracking-[0.15em]"><Clock size={14} weight="fill" /> Pendente</span>}
+                      {status === "nao_conforme" && <span className="inline-flex items-center gap-1 text-[#DC2626] text-xs font-bold uppercase tracking-[0.15em]"><XCircle size={14} weight="fill" /> Não conforme</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-[#0F2542]">{vehicleLabel(v)}</div>
+                      <div className="text-[11px] text-[#708278]">{v.marca} {v.modelo}</div>
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell text-[#4A564F]">
+                      {c?.driverName || v.motoristaTitularNome || "—"}
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell text-[11px] text-[#708278]">
+                      {c?.createdAt ? new Date(c.createdAt.seconds * 1000).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {c ? (
+                        <button onClick={() => navigate(`/checklists/${c.id}`)} data-testid={`abrir-${v.id}`}
+                          className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#1E3A5F] hover:underline">
+                          Ver checklist
+                        </button>
+                      ) : (
+                        <button onClick={() => navigate(`/veiculos/${v.id}`)}
+                          className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#708278] hover:underline">
+                          Ver veículo
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredRows.length === 0 && (
+              <div className="p-10 text-center text-sm text-[#708278]" data-testid="filter-empty">
+                Nenhum veículo nessa categoria.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Card({ label, value, color, icon: Icon, testId, active, onClick }) {
+  const clickable = typeof onClick === "function";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!clickable}
+      data-testid={testId}
+      data-active={active ? "true" : "false"}
+      className={`bg-white border rounded-md p-4 flex items-center gap-3 text-left w-full transition-all ${
+        active ? "ring-2 ring-offset-1" : "border-[#E2E8E4] hover:border-[#1E3A5F]/30"
+      } ${clickable ? "cursor-pointer" : "cursor-default"}`}
+      style={active ? { borderColor: color, boxShadow: `0 0 0 1px ${color}` } : undefined}
+    >
+      <div className="w-11 h-11 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}15` }}>
+        <Icon size={20} weight="duotone" style={{ color }} />
+      </div>
+      <div>
+        <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#708278]">{label}</div>
+        <div className="text-2xl font-black tracking-tight" style={{ color }}>{value}</div>
+      </div>
+    </button>
+  );
+}
