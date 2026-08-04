@@ -376,7 +376,7 @@ ${window.location.origin}/checklists`;
   // ----- estado pós-submit -----
   if (savedChecklist) {
     return (
-      <div className="p-6 md:p-10 max-w-3xl mx-auto">
+      <div className="p-6 md:p-10 max-w-none mx-auto">
         <div className="mt-8 bg-white border border-[#E2E8E4] rounded-md p-8 text-center">
           <div className="w-16 h-16 mx-auto rounded-full bg-[#2E7D32]/15 flex items-center justify-center text-[#2E7D32]">
             <CheckCircle size={36} weight="fill" />
@@ -399,7 +399,7 @@ ${window.location.origin}/checklists`;
 
   // ----- estado de fluxo -----
   return (
-    <div className="p-6 md:p-10 max-w-3xl mx-auto">
+    <div className="p-6 md:p-10 max-w-none mx-auto">
       <div className="text-xs uppercase tracking-[0.25em] text-[#708278] font-bold flex items-center gap-2">
         {isMotoristaApp
           ? <><Devices size={14} /> Checklist Diário</>

@@ -107,7 +107,7 @@ export default function ChecklistTemplates() {
   };
 
   return (
-    <div className="p-6 md:p-10 max-w-5xl mx-auto">
+    <div className="p-6 md:p-10 max-w-none mx-auto">
       <div className="flex justify-between items-end gap-4 flex-wrap">
         <div>
           <div className="text-xs uppercase tracking-[0.25em] text-[#708278] font-bold">Configuração</div>

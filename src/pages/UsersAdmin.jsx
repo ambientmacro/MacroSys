@@ -117,7 +117,7 @@ export default function UsersAdmin() {
   const [drivers, setDrivers] = useState([]); // motoristas operacionais (aprovados pelo DP)
   const [myTeams, setMyTeams] = useState([]); // equipes do usuário logado (encarregado/frota)
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: ROLES.MOTORISTA, phone: "" });
+  const [form, setForm] = useState({ name: "", username: "", email: "", password: "", role: ROLES.MOTORISTA, phone: "" });
   const [busy, setBusy] = useState(false);
 
   // Modal "Criar login" (para driver já aprovado)
@@ -289,32 +289,60 @@ export default function UsersAdmin() {
     } catch (e) { toast.error(e.message); }
   };
 
-  /** Criação de usuário DO ZERO (exceção administrativa). */
+  /** Criação de usuário DO ZERO (exceção administrativa).
+   *
+   * REGRAS:
+   *   • USERNAME (matrícula 7+ chars A-Z0-9) — obrigatório. É o que o
+   *     usuário digita para entrar no sistema.
+   *   • E-MAIL — obrigatório. É o e-mail REAL do usuário. Vai para o
+   *     Firebase Auth (não mais pseudo) e é usado como `recoveryEmail`
+   *     para futuras rotinas de reset de senha (via Cloud Functions no
+   *     plano Blaze, já preparado).
+   *   • O login por matrícula é resolvido no AuthContext fazendo lookup
+   *     Firestore (users where matricula==USERNAME → pega email real).
+   */
   const createUserFromScratch = async () => {
-    if (!form.name || !form.email || form.password.length < 6) {
-      toast.error("Preencha nome, e-mail e senha (mínimo 6 caracteres)."); return;
+    const username = (form.username || "").trim().toUpperCase();
+    const email = (form.email || "").trim().toLowerCase();
+    if (!form.name || !username || !email || form.password.length < 6) {
+      toast.error("Preencha nome, username, e-mail e senha (mínimo 6 caracteres)."); return;
+    }
+    if (!isMatricula(username)) {
+      toast.error("Username inválido — mínimo 7 caracteres alfanuméricos (A-Z, 0-9)."); return;
+    }
+    if (!email.includes("@") || !email.includes(".")) {
+      toast.error("E-mail inválido."); return;
     }
     const finalRole = isEncarregado ? ROLES.MOTORISTA : form.role;
     setBusy(true);
     try {
-      const cred = await createUserWithEmailAndPassword(secondaryAuth, form.email, form.password);
+      // Firebase Auth criado com o e-mail REAL — habilita reset via
+      // sendPasswordResetEmail() diretamente na conta (sem necessidade de
+      // Admin SDK). O login por username é resolvido via lookup no AuthContext.
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, form.password);
       await setDoc(doc(db, "users", cred.user.uid), {
-        email: form.email, name: form.name, role: finalRole, phone: form.phone || "",
+        email,                    // e-mail real (também é o e-mail do Auth)
+        recoveryEmail: email,     // duplicado — preparado para Cloud Functions
+        matricula: username,      // identificador de login que o usuário digita
+        loginType: "matricula",
+        name: form.name,
+        role: finalRole,
+        phone: form.phone || "",
         status: USER_STATUS.APPROVED,
-        loginType: "email",
         createdAt: serverTimestamp(),
         createdBy: profile.name, createdByRole: profile.role,
       });
       if (finalRole === ROLES.MOTORISTA) {
         await ensureDriverMirror(cred.user.uid, {
-          name: form.name, phone: form.phone, email: form.email,
+          name: form.name, phone: form.phone, email,
+          matricula: username,
           adminName: `${profile.name} (${ROLE_LABELS[profile.role]})`,
-          loginType: "email",
+          loginType: "matricula",
         });
       }
       await signOut(secondaryAuth);
-      toast.success(`Usuário criado: ${form.name}`);
-      setForm({ name: "", email: "", password: "", role: ROLES.MOTORISTA, phone: "" });
+      toast.success(`Usuário criado: ${form.name}`, { description: `Login: ${username} · E-mail: ${email}` });
+      setForm({ name: "", username: "", email: "", password: "", role: ROLES.MOTORISTA, phone: "" });
       setShowForm(false);
     } catch (e) {
       toast.error("Falha ao criar usuário", { description: e.message });
@@ -378,7 +406,7 @@ export default function UsersAdmin() {
   const pageHeadline = isAdmin ? "Administração · TI" : isDP ? "Administração · DP" : `${ROLE_LABELS[profile.role]}`;
 
   return (
-    <div className="p-6 md:p-10 max-w-5xl mx-auto">
+    <div className="p-6 md:p-10 max-w-none mx-auto">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="text-xs uppercase tracking-[0.25em] text-[#708278] font-bold">{pageHeadline}</div>
@@ -402,7 +430,7 @@ export default function UsersAdmin() {
         <Info size={18} className="text-[#2563EB] mt-0.5 shrink-0" weight="duotone" />
         <div className="text-xs text-[#0F2542] leading-relaxed">
           <strong>Como funciona:</strong> motoristas entram via <strong>Requerimento → DP aprova</strong>.
-          Depois de aprovados, eles aparecem aqui no bloco <em>"Aprovados pelo DP · sem login"</em> e você pode entregar o acesso
+          Depois de aprovados, eles aparecem aqui no bloco <em>&ldquo;Aprovados pelo DP · sem login&rdquo;</em> e você pode entregar o acesso
           ao sistema com <strong>e-mail</strong> (reset de senha pelo próprio sistema) ou <strong>matrícula de 7 dígitos</strong>
           (login interno da empresa).
           {canCreateFromScratch && (
@@ -428,11 +456,31 @@ export default function UsersAdmin() {
             </span>
           </div>
           <p className="text-xs text-[#4A564F]">
-            Cria um login que pula o DP. Use apenas quando o motorista já está trabalhando e precisa de acesso urgente.
+            Cria um login que pula o DP. Use apenas quando o usuário já está trabalhando e precisa de acesso urgente.
+            <br />O <b>username</b> é o que a pessoa digita para entrar. O <b>e-mail</b> é o endereço real do usuário — vai para o Firebase Auth e será usado para recuperação de senha no futuro.
           </p>
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="Nome completo"><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inp} data-testid="u-name" /></Field>
-            <Field label="E-mail"><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inp} data-testid="u-email" /></Field>
+            <Field label="Username · matrícula (obrigatório)">
+              <input
+                value={form.username}
+                onChange={(e) => setForm({ ...form, username: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") })}
+                placeholder="Ex.: 1234567 · ABC1234 · OP12345"
+                className={inp}
+                data-testid="u-username"
+              />
+              {form.username && isMatricula(form.username) && (
+                <div className="text-[10px] text-[#166534] uppercase tracking-[0.15em] font-bold mt-1" data-testid="u-username-ok">
+                  ✓ Login final: <b>{form.username}</b>
+                </div>
+              )}
+              {form.username && !isMatricula(form.username) && (
+                <div className="text-[10px] text-[#991B1B] uppercase tracking-[0.15em] font-bold mt-1">
+                  Mínimo 7 caracteres (A-Z, 0-9)
+                </div>
+              )}
+            </Field>
+            <Field label="E-mail real (obrigatório)"><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inp} data-testid="u-email" placeholder="usuario@empresa.com" /></Field>
             <Field label="Senha (mín. 6 chars)"><input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className={inp} data-testid="u-pwd" /></Field>
             <Field label="Telefone (opcional)"><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inp} data-testid="u-phone" /></Field>
             {!isEncarregado && (

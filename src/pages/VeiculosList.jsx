@@ -284,7 +284,7 @@ export default function VeiculosList() {
      RENDER
   --------------------------------------------------------- */
   return (
-    <div className="p-6 md:p-10 max-w-6xl mx-auto">
+    <div className="p-6 md:p-10 max-w-none mx-auto">
 
       <div className="text-xs uppercase tracking-[0.25em] text-[#708278] font-bold">Frota</div>
       <h1 className="font-[Outfit,sans-serif] text-3xl font-black tracking-tight text-[#0F1411] mt-2">Veículos</h1>

@@ -155,7 +155,7 @@ ${window.location.origin}/requerimentos/${reqId}`;
   };
 
   return (
-    <div className="p-6 md:p-10 max-w-4xl mx-auto">
+    <div className="p-6 md:p-10 max-w-none mx-auto">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] font-bold text-[#708278] hover:text-[#1E3A5F]">
         <ArrowLeft size={14} /> Voltar
       </button>

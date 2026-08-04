@@ -5,7 +5,7 @@ import {
   createUserWithEmailAndPassword,
   signOut as fbSignOut,
 } from "firebase/auth";
-import { doc, getDoc, getDocFromCache, setDoc, serverTimestamp, getDocs, collection, limit, query } from "firebase/firestore";
+import { doc, getDoc, getDocFromCache, setDoc, serverTimestamp, getDocs, collection, limit, query, where } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import { ROLES, USER_STATUS } from "../lib/constants";
 
@@ -61,18 +61,41 @@ export function AuthProvider({ children }) {
     return () => unsub();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (identifier, password) => {
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      // Bloqueia acesso de usuários inativados pelo Admin/DP.
-      // status === "rejected" significa: cadastro rejeitado OU desativado depois.
+      // Resolve o `email` real para o Firebase Auth. Se o identifier já
+      // é um e-mail, usa direto. Se é uma matrícula (formato username),
+      // faz lookup no Firestore para encontrar o e-mail cadastrado.
+      // Retrocompatível: se o lookup falhar (usuário antigo criado com
+      // pseudo-email), usa o pseudo antigo como fallback.
+      let emailToUse = identifier;
+      const cleaned = (identifier || "").trim();
+      if (!cleaned.includes("@")) {
+        // parece uma matrícula → lookup
+        const mat = cleaned.toUpperCase();
+        try {
+          const q = query(collection(db, "users"), where("matricula", "==", mat), limit(1));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            emailToUse = snap.docs[0].data().email;
+          } else {
+            // Fallback retrocompat: usuários criados antes do fix ainda
+            // usam pseudo-email. Import dinâmico para evitar dependência.
+            const { matriculaToPseudoEmail } = await import("../lib/auth-identifier");
+            emailToUse = matriculaToPseudoEmail(mat);
+          }
+        } catch (err) {
+          const { matriculaToPseudoEmail } = await import("../lib/auth-identifier");
+          emailToUse = matriculaToPseudoEmail(mat);
+        }
+      }
+      const cred = await signInWithEmailAndPassword(auth, emailToUse, password);
       const snap = await getDoc(doc(db, "users", cred.user.uid));
       if (snap.exists() && snap.data().status === USER_STATUS.REJECTED) {
         await fbSignOut(auth);
         throw new Error("Acesso desativado. Procure o Departamento Pessoal.");
       }
     } catch (e) {
-       
       console.error("[Auth] login error:", e);
       throw e;
     }

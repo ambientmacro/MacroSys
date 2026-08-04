@@ -146,7 +146,7 @@ export default function VehicleTypesAdmin() {
   const histType = showHistory ? types.find((t) => t.id === showHistory) : null;
 
   return (
-    <div className="px-4 sm:px-8 py-8 max-w-7xl mx-auto" data-testid="page-vehicle-types">
+    <div className="px-4 sm:px-8 py-8 max-w-none mx-auto" data-testid="page-vehicle-types">
       <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
         <div>
           <div className="text-[10px] uppercase tracking-[0.25em] text-[#708278] font-bold">Medição · Catálogo</div>

@@ -345,7 +345,7 @@ export default function ChecklistList() {
   const driverNames = Array.from(new Set(listForDriver.map(driverOf).filter(Boolean))).sort();
 
   return (
-    <div className="p-6 md:p-10 max-w-5xl mx-auto">
+    <div className="p-6 md:p-10 max-w-none mx-auto">
 
       <div className="text-xs uppercase tracking-[0.25em] text-[#708278] font-bold">
         {isMotorista ? "Seus registros" : profile.role === ROLES.ENCARREGADO ? "Sua equipe" : "Operação"}

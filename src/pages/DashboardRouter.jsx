@@ -17,7 +17,7 @@ export default function DashboardRouter() {
   const role = profile?.role;
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl mx-auto">
+    <div className="p-6 md:p-10 max-w-none mx-auto">
       <div className="text-xs uppercase tracking-[0.25em] text-[#708278] font-bold">Painel · {new Date().toLocaleDateString("pt-BR")}</div>
       <h1 className="font-[Outfit,sans-serif] text-3xl sm:text-4xl font-black tracking-tight text-[#0F1411] mt-2">
         Olá, {profile?.name?.split(" ")[0] || "operador"}.

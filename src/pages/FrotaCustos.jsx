@@ -76,7 +76,7 @@ export default function FrotaCustos() {
   const maxCat = porCategoria[0]?.total || 1;
 
   return (
-    <div className="px-4 sm:px-8 py-8 max-w-7xl mx-auto" data-testid="page-frota-custos">
+    <div className="px-4 sm:px-8 py-8 max-w-none mx-auto" data-testid="page-frota-custos">
       <div className="mb-6">
         <div className="text-[10px] uppercase tracking-[0.25em] text-[#708278] font-bold">Frota · Custo Total</div>
         <h1 className="font-[Outfit,sans-serif] text-3xl font-black tracking-tight text-[#0F1411] mt-1 flex items-center gap-2">

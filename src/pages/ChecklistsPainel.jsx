@@ -116,7 +116,7 @@ export default function ChecklistsPainel() {
   }, [rows, filter]);
 
   return (
-    <div className="px-4 sm:px-8 py-8 max-w-7xl mx-auto" data-testid="page-checklists-painel">
+    <div className="px-4 sm:px-8 py-8 max-w-none mx-auto" data-testid="page-checklists-painel">
       <div className="mb-6">
         <div className="text-[10px] uppercase tracking-[0.25em] text-[#708278] font-bold">{isEncarregado ? "Encarregado · Equipe" : "Frota"}</div>
         <h1 className="font-[Outfit,sans-serif] text-3xl font-black tracking-tight text-[#0F1411] mt-1 flex items-center gap-2">

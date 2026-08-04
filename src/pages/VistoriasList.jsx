@@ -16,7 +16,7 @@ export default function VistoriasList() {
   }, []);
 
   return (
-    <div className="p-6 md:p-10 max-w-5xl mx-auto">
+    <div className="p-6 md:p-10 max-w-none mx-auto">
       <div className="text-xs uppercase tracking-[0.25em] text-[#708278] font-bold flex items-center gap-2">
         <ShieldCheck size={14} /> Segurança do Trabalho
       </div>

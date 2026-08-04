@@ -479,7 +479,7 @@ ${window.location.origin}/requerimentos/${reqId}`;
     <div className="min-h-screen bg-[#F5F7FA] font-[Manrope,sans-serif]">
       {/* Top bar with breadcrumb */}
       <div className="bg-white border-b border-[#E2E8E4] px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center gap-2 text-xs text-[#708278] font-bold">
+        <div className="max-w-none mx-auto flex items-center gap-2 text-xs text-[#708278] font-bold">
           <House size={14} className="text-[#2563EB]" />
           <span className="text-[#2563EB]">Painel</span>
           <ArrowRight size={10} />

@@ -332,7 +332,7 @@ export default function MotoristasList() {
 
 
   return (
-    <div className="p-6 md:p-10 max-w-6xl mx-auto">
+    <div className="p-6 md:p-10 max-w-none mx-auto">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="text-xs uppercase tracking-[0.25em] text-[#708278] font-bold">Operação</div>

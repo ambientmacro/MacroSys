@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { normalizeLoginIdentifier, isMatricula } from "../lib/auth-identifier";
+import { isMatricula } from "../lib/auth-identifier";
 import {
   Drop, Truck, ShieldCheck, ClipboardText, Info,
   UsersThree, FileText, MagnifyingGlass, ChartLine, Package,
@@ -40,8 +40,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       // Converte matrícula em pseudo-email transparente para o Firebase Auth.
-      const email = normalizeLoginIdentifier(form.identifier);
-      await login(email, form.password);
+      // O AuthContext.login resolve internamente: se `identifier` é um
+      // e-mail, usa direto; se é uma matrícula, faz lookup Firestore para
+      // encontrar o e-mail real (com fallback retrocompat para pseudo).
+      await login(form.identifier.trim(), form.password);
       toast.success("Login realizado");
       navigate("/");
     } catch (err) {

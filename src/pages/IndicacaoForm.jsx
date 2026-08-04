@@ -70,7 +70,7 @@ export default function IndicacaoForm() {
   };
 
   return (
-    <div className="px-4 sm:px-8 py-8 max-w-3xl mx-auto" data-testid="page-indicacao-form">
+    <div className="px-4 sm:px-8 py-8 max-w-none mx-auto" data-testid="page-indicacao-form">
       <button onClick={() => navigate(-1)} className="text-xs text-[#708278] hover:text-[#0F2542] uppercase tracking-[0.15em] font-bold mb-4 flex items-center gap-1">
         <ArrowLeft size={14} /> Voltar
       </button>

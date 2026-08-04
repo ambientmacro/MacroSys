@@ -124,7 +124,7 @@ export default function FrotaRelatorios() {
   if (loading) return <div className="p-10 text-sm text-[#4A564F]">Carregando…</div>;
 
   return (
-    <div className="p-6 md:p-10 max-w-6xl mx-auto">
+    <div className="p-6 md:p-10 max-w-none mx-auto">
       <div className="text-xs uppercase tracking-[0.25em] text-[#708278] font-bold">Gestão de Frota</div>
       <h1 className="font-[Outfit,sans-serif] text-3xl font-black tracking-tight text-[#0F1411] mt-2 flex items-center gap-3">
         <ChartBar size={28} weight="duotone" className="text-[#2563EB]" /> Relatórios da Frota
